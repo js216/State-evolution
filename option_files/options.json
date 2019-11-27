@@ -1,5 +1,5 @@
 {
-  "H_fname": "H3.npy",
+  "H_fname": "matrices/H3.npy",
   "scan_param": "deltaT",
   "scan_range": {
     "start": -2e-06,
