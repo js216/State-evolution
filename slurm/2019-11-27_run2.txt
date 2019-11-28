@@ -1,0 +1,7 @@
+python3 /home/fas/demille/jk2534/project/State-evolution/scan.py /home/fas/demille/jk2534/project/State-evolution/option_files/2019-11-27_run2/ACi3.json /home/fas/demille/jk2534/project/State-evolution/results
+python3 /home/fas/demille/jk2534/project/State-evolution/scan.py /home/fas/demille/jk2534/project/State-evolution/option_files/2019-11-27_run2/ACi3_3.json /home/fas/demille/jk2534/project/State-evolution/results
+python3 /home/fas/demille/jk2534/project/State-evolution/scan.py /home/fas/demille/jk2534/project/State-evolution/option_files/2019-11-27_run2/ACi4.json /home/fas/demille/jk2534/project/State-evolution/results
+python3 /home/fas/demille/jk2534/project/State-evolution/scan.py /home/fas/demille/jk2534/project/State-evolution/option_files/2019-11-27_run2/DCi3_10MHz_2.json /home/fas/demille/jk2534/project/State-evolution/results
+python3 /home/fas/demille/jk2534/project/State-evolution/scan.py /home/fas/demille/jk2534/project/State-evolution/option_files/2019-11-27_run2/DCi3_25MHz_2.json /home/fas/demille/jk2534/project/State-evolution/results
+python3 /home/fas/demille/jk2534/project/State-evolution/scan.py /home/fas/demille/jk2534/project/State-evolution/option_files/2019-11-27_run2/ACw3_2500Vcm.json /home/fas/demille/jk2534/project/State-evolution/results
+python3 /home/fas/demille/jk2534/project/State-evolution/scan.py /home/fas/demille/jk2534/project/State-evolution/option_files/2019-11-27_run2/DCi3_0Vcm_2.json /home/fas/demille/jk2534/project/State-evolution/results

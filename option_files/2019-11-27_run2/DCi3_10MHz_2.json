@@ -1,10 +1,10 @@
 {
-  "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H4.npy",
+  "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H3.npy",
   "scan_param"    : "DCi",
   "scan_range": {
     "start"       : 500,
-    "stop"        : 2500,
-    "num"         : 255
+    "stop"        : 5000,
+    "num"         : 500
   },
   "fixed_params": {
     "ACw"         : 10e6,
@@ -15,7 +15,7 @@
   "time_params": {
     "pts_per_Vcm" : 0.1,
     "num_segm"    : 2,
-    "scan_length" : 6
+    "scan_length" : 2
   },
   "state_idx"     : 35
 }

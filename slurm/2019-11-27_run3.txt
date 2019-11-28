@@ -1,0 +1,2 @@
+python3 /home/fas/demille/jk2534/project/State-evolution/scan.py /home/fas/demille/jk2534/project/State-evolution/option_files/2019-11-27_run2/ACi3.json /home/fas/demille/jk2534/project/State-evolution/results
+python3 /home/fas/demille/jk2534/project/State-evolution/scan.py /home/fas/demille/jk2534/project/State-evolution/option_files/2019-11-27_run2/ACi4.json /home/fas/demille/jk2534/project/State-evolution/results

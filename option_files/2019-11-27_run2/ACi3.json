@@ -1,10 +1,10 @@
 {
-  "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H4.npy",
+  "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H3.npy",
   "scan_param"    : "ACi",
   "scan_range": {
-    "start"       : 0,
-    "stop"        : 2500,
-    "num"         : 251
+    "start"       : 10000,
+    "stop"        : 0,
+    "num"         : 250
   },
   "fixed_params": {
     "DCi"         : 500,

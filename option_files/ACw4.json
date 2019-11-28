@@ -4,7 +4,7 @@
   "scan_range": {
     "start"       : 5e6,
     "stop"        : 25e6,
-    "num"         : 250
+    "num"         : 253
   },
   "fixed_params": {
     "DCi"         : 500,
