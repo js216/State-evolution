@@ -415,7 +415,7 @@ def run_scan(H_fname, scan_param, scan_range, fixed_params, time_params, state_i
 
         # evaluate transition probability
         _, P = np.linalg.eigh(H(time_grid[-1]))
-        trans = np.abs(H(time_grid[-1]) @ U @ np.linalg.inv(H(time_grid[-1])))**2
+        trans = np.abs(P @ U @ np.linalg.inv(P))**2
         exit_probs.append(1 - trans[state_idx][state_idx])
     
     return np.array(exit_probs)

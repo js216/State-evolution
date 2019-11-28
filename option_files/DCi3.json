@@ -1,0 +1,21 @@
+{
+  "H_fname"       : "matrices/H3.npy",
+  "scan_param"    : "DCi",
+  "scan_range": {
+    "start"       : 500,
+    "stop"        : 2500,
+    "num"         : 250
+  },
+  "fixed_params": {
+    "ACw"         : 10e6,
+    "DCslope"     : 2.75e8,
+    "ACi"         : 300,
+    "deltaT"      : 2e-6
+  },
+  "time_params": {
+    "pts_per_Vcm" : 0.1,
+    "num_segm"    : 2,
+    "scan_length" : 6
+  },
+  "state_idx"     : 35
+}
