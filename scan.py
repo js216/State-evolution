@@ -439,4 +439,4 @@ if __name__ == '__main__':
     # write results to file
     results_fname = hashlib.md5(open(sys.argv[1],'rb').read()).hexdigest() + ".txt"
     results_dir = sys.argv[2]
-    np.savetxt(results_dir+results_fname, results)
+    np.savetxt(results_dir+"/"+results_fname, results)
