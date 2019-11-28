@@ -1,5 +1,5 @@
 {
-  "H_fname"       : "matrices/H4.npy",
+  "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H4.npy",
   "scan_param"    : "DCi",
   "scan_range": {
     "start"       : 500,
