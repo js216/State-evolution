@@ -12,10 +12,10 @@ probability the molecule exits a given final state.
 The calculation proceeds in two steps. First, the time-evolution operator `U` is
 calculated as the time-ordered exponential
 
-    U = T exp{ ∫H(t) dt },
+    U = T exp{ ∫ H(t) dt },
 
-formally solving the Schroedinger equation. Then, we find the `transition
-matrix` elements
+formally solving the Schroedinger equation. Then, we find the transition
+matrix elements
 
     T_ij = | ⟨j|U|i⟩ |^2
 
