@@ -1,4 +1,0 @@
-0	0	p08r02n11.grace.hpc.yale.internal	2019-11-29 14:54:04	2019-11-29 15:37:14	2590.11	python3 /home/fas/demille/jk2534/project/State-evolution/src/scan.py /home/fas/demille/jk2534/project/State-evolution/runs/1575056668-finermesh ACi.json
-1	0	p08r02n16.grace.hpc.yale.internal	2019-11-29 14:54:04	2019-11-29 16:22:46	5322.23	python3 /home/fas/demille/jk2534/project/State-evolution/src/scan.py /home/fas/demille/jk2534/project/State-evolution/runs/1575056668-finermesh ACw.json
-3	0	p08r05n02.grace.hpc.yale.internal	2019-11-29 14:54:04	2019-11-29 16:23:44	5380.27	python3 /home/fas/demille/jk2534/project/State-evolution/src/scan.py /home/fas/demille/jk2534/project/State-evolution/runs/1575056668-finermesh deltaT.json
-2	0	p08r05n01.grace.hpc.yale.internal	2019-11-29 14:54:04	2019-11-29 16:57:28	7403.84	python3 /home/fas/demille/jk2534/project/State-evolution/src/scan.py /home/fas/demille/jk2534/project/State-evolution/runs/1575056668-finermesh DCi.json

@@ -61,6 +61,7 @@ def plot(run_dir, options_fname, title="", ax=None):
     ax.grid()
     plt.tight_layout()
     plt.savefig(run_dir+"/plots/"+results_md5+".png")
+    plt.close()
 
 if __name__ == '__main__':
     # decode script parameters

@@ -1,4 +1,0 @@
-python3 /home/fas/demille/jk2534/project/State-evolution/src/scan.py /home/fas/demille/jk2534/project/State-evolution/runs/1575056668-finermesh ACi.json
-python3 /home/fas/demille/jk2534/project/State-evolution/src/scan.py /home/fas/demille/jk2534/project/State-evolution/runs/1575056668-finermesh ACw.json
-python3 /home/fas/demille/jk2534/project/State-evolution/src/scan.py /home/fas/demille/jk2534/project/State-evolution/runs/1575056668-finermesh DCi.json
-python3 /home/fas/demille/jk2534/project/State-evolution/src/scan.py /home/fas/demille/jk2534/project/State-evolution/runs/1575056668-finermesh deltaT.json
