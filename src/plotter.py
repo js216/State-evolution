@@ -69,4 +69,7 @@ if __name__ == '__main__':
     options_fnames = [sys.argv[2]] if len(sys.argv)>2 else glob.glob(run_dir+"/options/*.json")
 
     for path in options_fnames:
-        plot(run_dir, os.path.basename(path), title="")
+       try:
+          plot(run_dir, os.path.basename(path), title="")
+       except FileNotFoundError:
+          print("No results for: "+path)
