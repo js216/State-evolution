@@ -1,9 +1,5 @@
 import numpy as np
 from numpy import sqrt
-from scipy.linalg import expm
-from tqdm import tqdm
-import sys
-import json, hashlib
 
 # Units and constants
 
@@ -373,70 +369,11 @@ def Heff_fit(field_arr, fp):
     return constant + linear + quadratic + cross_E + cross_B \
                     + cubic + cross_E2a + cross_E2b + cross_B2a + cross_B2b
 
-
-
-def DC(t, DCi, DCslope):
-    return DCi - DCslope*t
-
-def AC_hat(t, ACi, T0):
-    return ACi * np.heaviside( T0 - t, 1)
-
-def field(t, DCi, DCslope, ACi, deltaT, ACw):
-    return DC(t, DCi, DCslope) + AC_hat(t, ACi, DCi/DCslope+deltaT) * np.cos(ACw*t)
-
-def generate_time_mesh(DCi, DCslope, ACi, deltaT, ACw, pts_per_Vcm, num_segm, scan_length):
-    # split the time period into a number of segments
-    segm = np.linspace(0, scan_length*DCi/DCslope, int(3*DCi/DCslope*ACw/(2*np.pi)/num_segm))
-    
-    # make a sub-mesh for each of the segments
-    time = []
-    for i in range(len(segm)-1):
-        N_pts = (DCslope + ACw*AC_hat(segm[i], ACi, DCi/DCslope+deltaT)) * (segm[i+1]-segm[i]) * pts_per_Vcm
-        time.extend( np.linspace(segm[i], segm[i+1], int(N_pts)) )
-        
-    return np.array(time)
-
-def run_scan(H_fname, scan_param, scan_range, fixed_params, time_params, state_idx=19, ax=None, title=""):
-    # import the Hamiltonian matrix elements
-    H_fn = import_Hamiltonian(H_fname)
-
-    exit_probs = []
-    for val in tqdm(np.linspace(**scan_range)):
-        # define time grid, field, and Hamiltonian
-        time_grid = generate_time_mesh(**fixed_params, **{scan_param: val}, **time_params)
-        Ez_t = lambda t: field(t, **fixed_params, **{scan_param: val})
-        H  = lambda t: H_fn(np.array([[0,0,Ez_t(t),0,0,0.5]]))[0]
-
-        # calculate time-evolution operator
-        dt = np.diff(time_grid)
-        U = expm(-1j*dt[0]*H(0))
-        for t,dt in zip(time_grid[1:-1], dt[1:]):
-            U = expm(-1j*dt*H(t)) @ U
-
-        # evaluate transition probability
-        _, P = np.linalg.eigh(H(time_grid[-1]))
-        trans = np.abs(P @ U @ np.linalg.inv(P))**2
-        exit_probs.append(1 - trans[state_idx][state_idx])
-    
-    return np.array(exit_probs)
-
 def generate_Hamiltonian(Jmax, fname):
     np.save(fname, H_mat_elem(Jmax))
 
-def import_Hamiltonian(fname):
+def load_Hamiltonian(fname):
     Hff_m, HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m = np.load(fname)
     Hfield_m = np.stack([HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m], axis=2)
     return lambda fields : Hff_m + np.einsum("ax,ijx->aij", fields, Hfield_m)
 
-if __name__ == '__main__':
-    # import run options dict
-    with open(sys.argv[1]) as options_file:
-        option_dict = json.load(options_file)
-
-    # run scan
-    results = run_scan(**option_dict)
-
-    # write results to file
-    results_fname = hashlib.md5(open(sys.argv[1],'rb').read()).hexdigest() + ".txt"
-    results_dir = sys.argv[2]
-    np.savetxt(results_dir+"/"+results_fname, results)
