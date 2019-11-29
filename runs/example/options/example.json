@@ -4,12 +4,12 @@
   "scan_range": {
     "start"       : 5e6,
     "stop"        : 25e6,
-    "num"         : 250
+    "num"         : 25
   },
   "fixed_params": {
     "DCi"         : 500,
     "DCslope"     : 2.75e8,
-    "ACi"         : 300,
+    "ACi"         : 1,
     "deltaT"      : 2e-6
   },
   "time_params": {
