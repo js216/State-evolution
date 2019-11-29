@@ -11,7 +11,14 @@ import fields
 def run_scan(H_fname, scan_param, scan_range, fixed_params, time_params, state_idx=19, ax=None, title=""):
     start_time = time.time()
 
-    # import the Hamiltonian matrix elements
+    # report number of timesteps (for estimating running time)
+    num_timesteps = 0
+    for val in np.linspace(**scan_range):
+        time_grid = fields.time_mesh(**fixed_params, **{scan_param: val}, **time_params)
+        num_timesteps += len(time_grid)
+    print(num_timesteps)
+
+    # import the Hamiltonian
     H_fn = TlF.load_Hamiltonian(H_fname)
 
     exit_probs = []
@@ -32,7 +39,7 @@ def run_scan(H_fname, scan_param, scan_range, fixed_params, time_params, state_i
         trans = np.abs(P @ U @ np.linalg.inv(P))**2
         exit_probs.append(1 - trans[state_idx][state_idx])
     
-    return time.time()-start_time, exit_probs
+    return num_timesteps, time.time()-start_time, exit_probs
 
 if __name__ == '__main__':
     # decode script parameters
@@ -44,9 +51,9 @@ if __name__ == '__main__':
         option_dict = json.load(options_file)
 
     # run scan
-    eval_time, results = run_scan(**option_dict)
+    results = run_scan(**option_dict)
 
     # write results to file
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
     with open(run_dir+"/results/"+results_md5+".txt", "w") as f:
-        json.dump([eval_time, results], f)
+        json.dump(results, f)

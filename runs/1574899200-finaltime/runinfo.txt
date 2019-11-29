@@ -1,2 +1,0 @@
-This scan is for studying the effect of final DC field on the exit
-probabilities, when AC is turned on throughout.

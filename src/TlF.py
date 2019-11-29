@@ -376,4 +376,3 @@ def load_Hamiltonian(fname):
     Hff_m, HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m = np.load(fname)
     Hfield_m = np.stack([HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m], axis=2)
     return lambda fields : Hff_m + np.einsum("ax,ijx->aij", fields, Hfield_m)
-
