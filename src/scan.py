@@ -55,5 +55,5 @@ if __name__ == '__main__':
 
     # write results to file
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
-    with open(run_dir+"/results/"+results_md5+".txt", "w") as f:
+    with open(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt", "w") as f:
         json.dump(results, f)

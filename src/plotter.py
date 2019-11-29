@@ -29,7 +29,7 @@ def plot(run_dir, options_fname, title="", ax=None):
 
     # load results
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
-    with open(run_dir+"/results/"+results_md5+".txt") as f:
+    with open(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt") as f:
         num_timesteps, eval_time, results = json.load(f)
 
     # plot results
