@@ -60,7 +60,7 @@ def plot(run_dir, options_fname, title="", ax=None):
     # save plot to file
     ax.grid()
     plt.tight_layout()
-    plt.savefig(run_dir+"/plots/"+results_md5+".png")
+    plt.savefig(run_dir+"/plots/"+options_fname[:-5]+"-"+results_md5+".png")
     plt.close()
 
 if __name__ == '__main__':
