@@ -15,6 +15,10 @@ def field(t, **params):
 def time_mesh(DCi, DCslope, ACi, deltaT, ACw, pts_per_Vcm, num_segm, scan_length):
     # split the time period into a number of segments
     segm = np.linspace(0, scan_length*DCi/DCslope, int(3*DCi/DCslope*ACw/(2*np.pi)/num_segm))
+
+    # make sure there's at least one segment
+    if len(segm) < 2:
+       segm = [0, scan_length*DCi/DCslope]
     
     # make a sub-mesh for each of the segments
     time = []
