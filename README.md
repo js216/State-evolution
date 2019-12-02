@@ -88,6 +88,7 @@ already parallelized by
 in a multi-threaded way. Nonetheless, each scan with a decent number of steps
 will take hours on a modern machine. Thus, I recommend defining multiple option
 files within a single `run_dir`, and running each scan on a separated node in a
-cluster. Moreover, if the main script uses all available MPI ranks. Refer to the
-[YCRC instructions](https://docs.ycrc.yale.edu/clusters-at-yale/) to learn how
-to access the cluster at Yale.
+cluster. Moreover, the main script uses all available MPI ranks, so calling it
+with `mpirun -n ⟨n⟩` will speed up the scan `n` times. Refer to the [YCRC
+instructions](https://docs.ycrc.yale.edu/clusters-at-yale/) to learn how to
+access the cluster at Yale.
