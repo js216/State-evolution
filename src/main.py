@@ -20,7 +20,7 @@ def run_scan(val_range, H_fname, scan_param, fixed_params, time_params, state_id
     H_fn = TlF.load_Hamiltonian(H_fname)
 
     exit_probs = []
-    for val in val_range:
+    for val in tqdm(val_range):
         # define time grid, field, and Hamiltonian
         time_grid = fields.time_mesh(**fixed_params, **{scan_param: val}, **time_params)
         E_t = lambda t: fields.field(t, **fixed_params, **{scan_param: val})
