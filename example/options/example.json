@@ -13,9 +13,9 @@
     "deltaT"      : 2e-6
   },
   "time_params": {
-    "pts_per_Vcm" : 0.1,
+    "pts_per_Vcm" : 0.01,
     "num_segm"    : 2,
-    "scan_length" : 6
+    "scan_length" : 2
   },
   "state_idx"     : 35
 }

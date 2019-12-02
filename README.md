@@ -41,12 +41,11 @@ The fields are defined in `fields.py` as a set of functions of time and
   the state evolution (i.e., the time steps are the more densely packed when the
   fields and thus the Hamiltonian are expected to vary quickly with time)
 
-Finally, `scan.py` is the script to be used to run a scan over parameters. Note
+Finally, `main.py` is the script to be used to run a scan over parameters. Note
 the final `if __name__ == '__main__'` statement, requiring two arguments to the
 script: the "run directory", and the filename of the "option file" (to be
 explained in the next section). The scan results are written in the appropriate
-place in the `run_dir`, and the script `plotter.py` can parse them to produce a
-plot.
+place in the `run_dir`, and the plots into `plots`.
 
 ### Basic usage
 
@@ -73,19 +72,13 @@ plot.
    - `state_idx` determines which state's  in the enumeration of eigenstates of
      `H(t=field(t_final))`
 
-3. Run the `scan.py` script, giving it the run directory, and the `.json` file
+3. Run the `main.py` script, giving it the run directory, and the `.json` file
    as arguments. For example:
 
-       python3 src/scan.py runs/example/ example.json
+       python3 src/main.py runs/example/ example.json
 
    The program prints the number of time steps to be used with the chosen time
    mesh, and the progress of the calculation (using `tqdm`).
-
-4. Optionally, the `plotter.py` to visualize the results. The `.json` file argument
-   is optional; if omitted, the plotter will make plots corresponding to all of
-   the `.json` files in `run_dir/options`. For example:
-
-       python3 src/plotter.py runs/example/
 
 ### Parallel evaluation
 
@@ -95,5 +88,6 @@ already parallelized by
 in a multi-threaded way. Nonetheless, each scan with a decent number of steps
 will take hours on a modern machine. Thus, I recommend defining multiple option
 files within a single `run_dir`, and running each scan on a separated node in a
-cluster. Refer to the [YCRC instructions](https://docs.ycrc.yale.edu/clusters-at-yale/)
-to learn how to access the cluster at Yale.
+cluster. Moreover, if the main script uses all available MPI ranks. Refer to the
+[YCRC instructions](https://docs.ycrc.yale.edu/clusters-at-yale/) to learn how
+to access the cluster at Yale.
