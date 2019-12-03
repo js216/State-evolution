@@ -50,6 +50,7 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
         # for runtime analysis
         start_time = time.time()
         num_timesteps = estimate_runtime(scan_space, **option_dict)
+        print(num_timesteps)
 
         # split job into specified number of chunks
         scan_chunks = np.split(scan_space, COMM.size)
@@ -103,11 +104,11 @@ def plot(run_dir, options_fname, title=""):
     if "scan_range2" in option_dict:
         range1 = np.linspace(**option_dict["scan_range"])
         range2 = np.linspace(**option_dict["scan_range2"])
-        X, Y = np.meshgrid(range1, range2, indexing='ij')
+        X, Y = np.meshgrid(range2, range1)
         Z    = np.reshape(results, (len(range1), len(range2)))
         plt.pcolormesh(X, Y, Z, cmap="nipy_spectral")
-        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
-        plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
+        plt.xlabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param"]]+"]")
+        plt.ylabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param2"]]+"]")
         plt.colorbar()
 
     # 1D scan
