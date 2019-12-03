@@ -47,6 +47,10 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
         range2 = np.linspace(**scan_range2) if scan_range2 else [0]
         scan_space = np.dstack(np.meshgrid(range1, range2)).reshape(-1, 2)
 
+        # shuffle the scan space (to distribute workload more uniformly)
+        permutation = np.random.permutation(scan_space.shape[0])
+        scan_space = scan_space[permutation]
+
         # for runtime analysis
         start_time = time.time()
         num_timesteps = estimate_runtime(scan_space, **option_dict)
@@ -62,10 +66,20 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
     out_chunk  = run_scan(in_chunk, **scan_params)
     exit_probs = MPI.COMM_WORLD.gather(out_chunk, root=0)
 
-    # write results to file
+    # collect the results together
     if COMM.rank == 0:
+        # unshuffle
+        shuffled_results = np.ravel(exit_probs)
+        unshuffled_results = np.zeros(shuffled_results.shape)
+        unshuffled_results[permutation] = shuffled_results
+
+        # write to file
         with open(result_fname, "w") as f:
-            json.dump([num_timesteps, time.time()-start_time, list(np.ravel(exit_probs))], f)
+            json.dump([
+                num_timesteps,
+                time.time()-start_time,
+                list(unshuffled_results)
+            ], f)
 
 
 def plot(run_dir, options_fname, title=""):
