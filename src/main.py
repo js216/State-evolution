@@ -15,15 +15,15 @@ import fields
 # default MPI communicator
 COMM = MPI.COMM_WORLD
 
-def run_scan(val_range, H_fname, scan_param, fixed_params, time_params, state_idx, **kwargs):
+def run_scan(val_range, H_fname, fixed_params, time_params, state_idx, scan_param, scan_param2=None, **kwargs):
     # import Hamiltonian
     H_fn = TlF.load_Hamiltonian(H_fname)
 
     exit_probs = []
-    for val in tqdm(val_range):
+    for val1,val2 in tqdm(val_range):
         # define time grid, field, and Hamiltonian
-        time_grid = fields.time_mesh(**fixed_params, **{scan_param: val}, **time_params)
-        E_t = lambda t: fields.field(t, **fixed_params, **{scan_param: val})
+        time_grid = fields.time_mesh(**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params)
+        E_t = lambda t: fields.field(t, **fixed_params, **{scan_param: val1, scan_param2: val2})
         H  = lambda t: H_fn(E_t(t))[0]
 
         # calculate time-evolution operator
@@ -40,14 +40,19 @@ def run_scan(val_range, H_fname, scan_param, fixed_params, time_params, state_id
     return exit_probs
 
 
-def process(scan_range, **scan_params):
+def process(scan_range, scan_range2=None, **scan_params):
     if COMM.rank == 0:
         # for runtime analysis
         start_time = time.time()
         num_timesteps = estimate_runtime(np.linspace(**scan_range), **option_dict)
 
+        # flatten a 2D scan (if applicable)
+        range1 = np.linspace(**scan_range)
+        range2 = np.linspace(**scan_range2) if scan_range2 else [0]
+        scan_space = np.dstack(np.meshgrid(range1, range2)).reshape(-1, 2)
+
         # split job into specified number of chunks
-        scan_chunks = np.split(np.linspace(**scan_range), COMM.size)
+        scan_chunks = np.split(scan_space, COMM.size)
     else:
         scan_chunks = None
 
@@ -63,7 +68,7 @@ def process(scan_range, **scan_params):
             json.dump([num_timesteps, time.time()-start_time, list(np.ravel(exit_probs))], f)
 
 
-def plot(run_dir, options_fname, title="", ax=None):
+def plot(run_dir, options_fname, title=""):
     # define plot format
     SMALL_SIZE = 16
     MEDIUM_SIZE = 20
@@ -77,6 +82,15 @@ def plot(run_dir, options_fname, title="", ax=None):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
     plt.rc('axes.formatter', limits=(-5,5))  # tick labels go into scientific notation at 1e5, 1e-5
 
+    # define units
+    units = {
+        "DCi"     : "V/cm",
+        "DCslope" : "V/cm/s",
+        "ACi"     : "V/cm",
+        "deltaT"  : "s",
+        "ACw"     : "Hz",
+    }
+
     # import run options dict
     with open(run_dir+"/options/"+options_fname) as options_file:
         option_dict = json.load(options_file)
@@ -86,21 +100,20 @@ def plot(run_dir, options_fname, title="", ax=None):
     with open(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt") as f:
         num_timesteps, eval_time, results = json.load(f)
 
-    # plot results
-    if ax is None:
-        ax = plt.gca()
-    ax.plot(np.linspace(**option_dict["scan_range"]), results, lw=2, color="black")
-    units = {
-        "DCi"     : "V/cm",
-        "DCslope" : "V/cm/s",
-        "ACi"     : "V/cm",
-        "deltaT"  : "s",
-        "ACw"     : "Hz",
-    }
+    # 2D scan
+    if "scan_range2" in option_dict:
+        range1 = np.linspace(**scan_range)
+        range2 = np.linspace(**scan_range2)
+        X, Y = np.meshgrid(range1, range2)
+        Z    = np.reshape(results, (len(range1), len(range2)))
+
+    # 1D scan
+    else:
+       ax.plot(np.linspace(**option_dict["scan_range"]), results, lw=2, color="black")
+       ax.set_xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
+       ax.set_ylabel("$P_\mathrm{exit}$ from state "+str(option_dict["state_idx"]))
 
     # plot labels
-    ax.set_xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
-    ax.set_ylabel("$P_\mathrm{exit}$ from state "+str(option_dict["state_idx"]))
     longtitle = title + option_dict["H_fname"].split("/")[-1] + ", "
     longtitle += ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
             for (key, value) in option_dict["fixed_params"].items()])
