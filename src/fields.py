@@ -6,13 +6,13 @@ def DC(t, DCi, DCslope):
 def AC(t, ACi, T0):
     return ACi * np.heaviside( T0 - t, 1)
 
-def Ez(t, DCi, DCslope, ACi, deltaT, ACw):
+def Ez(t, DCi, DCslope, ACi, deltaT, ACw, **kwargs):
     return DC(t, DCi, DCslope) + AC(t, ACi, DCi/DCslope+deltaT) * np.cos(ACw*t)
 
 def field(t, **params):
     return np.array([[0,0,Ez(t, **params),0,0,0.5]])
 
-def time_mesh(DCi, DCslope, ACi, deltaT, ACw, pts_per_Vcm, num_segm, scan_length):
+def time_mesh(DCi, DCslope, ACi, deltaT, ACw, pts_per_Vcm, num_segm, scan_length, **kwargs):
     # split the time period into a number of segments
     segm = np.linspace(0, scan_length*DCi/DCslope, int(3*DCi/DCslope*ACw/(2*np.pi)/num_segm))
 

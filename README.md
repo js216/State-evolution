@@ -63,6 +63,9 @@ place in the `run_dir`, and the plots into `plots`.
    - `scan_param` and `scan_range`, giving the parameter that is to be scanned
      over
 
+   - optionally, if executing a 2D scan, `scan_param2` and `scan_range2` give
+     the other scanned parameter
+
    - `fixed_params`, giving the names and values of the fixed parameters that
      are to be passed to the `field` function, as well as displayed in the plots
 
