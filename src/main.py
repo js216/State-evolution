@@ -118,8 +118,8 @@ def plot(run_dir, options_fname, title=""):
     if "scan_range2" in option_dict:
         range1 = np.linspace(**option_dict["scan_range"])
         range2 = np.linspace(**option_dict["scan_range2"])
-        X, Y = np.meshgrid(range1, range2, indexing='ij')
-        Z    = np.reshape(results, X.shape)
+        X, Y = np.meshgrid(range2, range1)
+        Z    = np.reshape(results, X.shape, order='F')
         plt.pcolormesh(Y, X, Z, cmap="nipy_spectral")
         plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
         plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
