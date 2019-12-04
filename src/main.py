@@ -45,7 +45,7 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
         # flatten a 2D scan (if applicable)
         range1 = np.linspace(**scan_range)
         range2 = np.linspace(**scan_range2) if scan_range2 else [0]
-        scan_space = np.dstack(np.meshgrid(range1, range2)).reshape(-1, 2)
+        scan_space = np.dstack(np.meshgrid(range1, range2, indexing='ij')).reshape(-1, 2)
 
         # shuffle the scan space (to distribute workload more uniformly)
         permutation = np.random.permutation(scan_space.shape[0])
@@ -118,11 +118,11 @@ def plot(run_dir, options_fname, title=""):
     if "scan_range2" in option_dict:
         range1 = np.linspace(**option_dict["scan_range"])
         range2 = np.linspace(**option_dict["scan_range2"])
-        X, Y = np.meshgrid(range2, range1)
-        Z    = np.reshape(results, (len(range1), len(range2)))
-        plt.pcolormesh(X, Y, Z, cmap="nipy_spectral")
-        plt.xlabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param"]]+"]")
-        plt.ylabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param2"]]+"]")
+        X, Y = np.meshgrid(range1, range2, indexing='ij')
+        Z    = np.reshape(results, X.shape)
+        plt.pcolormesh(Y, X, Z, cmap="nipy_spectral")
+        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
+        plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
         plt.colorbar()
 
     # 1D scan
