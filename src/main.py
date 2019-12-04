@@ -82,7 +82,7 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
             ], f)
 
 
-def plot(run_dir, options_fname, title=""):
+def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
     # define plot format
     SMALL_SIZE = 16
     MEDIUM_SIZE = 20
@@ -120,7 +120,7 @@ def plot(run_dir, options_fname, title=""):
         range2 = np.linspace(**option_dict["scan_range2"])
         X, Y = np.meshgrid(range2, range1)
         Z    = np.reshape(results, X.shape, order='F')
-        plt.pcolormesh(Y, X, Z, cmap="nipy_spectral")
+        plt.pcolormesh(Y, X, Z, cmap="nipy_spectral", vmin=vmin, vmax=vmax)
         plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
         plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
         plt.colorbar()
