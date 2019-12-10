@@ -6,11 +6,12 @@ import json, hashlib
 from tqdm import tqdm
 from mpi4py import MPI
 from textwrap import wrap
-from scipy.linalg import expm
+from functools import reduce
 import matplotlib.pyplot as plt
 
 import TlF
 import fields
+from util import expm_arr
 
 # default MPI communicator
 COMM = MPI.COMM_WORLD
@@ -23,17 +24,16 @@ def run_scan(val_range, H_fname, fixed_params, time_params, state_idx, scan_para
     for val1,val2 in tqdm(val_range):
         # define time grid, field, and Hamiltonian
         time_grid = fields.time_mesh(**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params)
-        E_t = lambda t: fields.field(t, **fixed_params, **{scan_param: val1, scan_param2: val2})
-        H  = lambda t: H_fn(E_t(t))[0]
+        field_arr = fields.field(time_grid[:-1], **fixed_params, **{scan_param: val1, scan_param2: val2})
+        H_arr     = H_fn(field_arr)
 
         # calculate time-evolution operator
         dt = np.diff(time_grid)
-        U = expm(-1j*dt[0]*H(0))
-        for t,dt in zip(time_grid[1:-1], dt[1:]):
-            U = expm(-1j*dt*H(t)) @ U
+        dU = expm_arr(-1j * dt[:,np.newaxis,np.newaxis] * H_arr, s=time_params["s"])
+        U = reduce(np.matmul, dU)
 
         # evaluate transition probability
-        _, P = np.linalg.eigh(H(time_grid[-1]))
+        _, P = np.linalg.eigh(H_arr[-1])
         trans = np.abs(P @ U @ np.linalg.inv(P))**2
         exit_probs.append( 1 - trans[state_idx][state_idx] )
 

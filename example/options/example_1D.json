@@ -4,7 +4,7 @@
   "scan_range": {
     "start"       : 500,
     "stop"        : 2500,
-    "num"         : 15
+    "num"         : 25
   },
   "fixed_params": {
     "ACw"         : 500,
@@ -15,7 +15,8 @@
   "time_params": {
     "pts_per_Vcm" : 0.01,
     "num_segm"    : 2,
-    "scan_length" : 2
+    "scan_length" : 2,
+    "s"           : 15
   },
   "state_idx"     : 35
 }

@@ -10,7 +10,10 @@ def Ez(t, DCi, DCslope, ACi, deltaT, ACw, **kwargs):
     return DC(t, DCi, DCslope) + AC(t, ACi, DCi/DCslope+deltaT) * np.cos(ACw*t)
 
 def field(t, **params):
-    return np.array([[0,0,Ez(t, **params),0,0,0.5]])
+    field_arr = np.zeros([len(t), 6])
+    field_arr[:,2] = Ez(t, **params)
+    field_arr[:,5] = 0.5
+    return field_arr
 
 def time_mesh(DCi, DCslope, ACi, deltaT, ACw, pts_per_Vcm, num_segm, scan_length, **kwargs):
     # split the time period into a number of segments
