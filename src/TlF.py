@@ -1,6 +1,5 @@
 import numpy as np
 from numpy import sqrt
-import tensorflow as tf
 
 # Units and constants
 
@@ -374,12 +373,6 @@ def generate_Hamiltonian(Jmax, fname):
     np.save(fname, H_mat_elem(Jmax))
 
 def load_Hamiltonian(fname):
-    # load the matrices
     Hff_m, HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m = np.load(fname)
     Hfield_m = np.stack([HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m], axis=2)
-
-    return lambda fields : Hff_m + tf.einsum(
-            "ax,ijx->aij",
-            tf.dtypes.cast(fields, tf.complex128),
-            tf.convert_to_tensor(Hfield_m)
-        )
+    return lambda fields : Hff_m + np.einsum("ax,ijx->aij", fields, Hfield_m)
