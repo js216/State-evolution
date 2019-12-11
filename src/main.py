@@ -5,35 +5,49 @@ import numpy as np
 import json, hashlib
 from tqdm import tqdm
 from mpi4py import MPI
+import tensorflow as tf
 from textwrap import wrap
 from functools import reduce
 import matplotlib.pyplot as plt
 
 import TlF
 import fields
-from util import expm_arr
+from util import expm_arr_tf
 
 # default MPI communicator
 COMM = MPI.COMM_WORLD
 
-def run_scan(val_range, H_fname, fixed_params, time_params, state_idx, scan_param, scan_param2="none", **kwargs):
+# set tf debug level
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+
+def run_scan(val_range, H_fname, fixed_params, time_params, state_idx,
+               scan_param, scan_param2="none", batch_size=1000, **kwargs):
     # import Hamiltonian
     H_fn = TlF.load_Hamiltonian(H_fname)
 
     exit_probs = []
     for val1,val2 in tqdm(val_range):
-        # define time grid, field, and Hamiltonian
-        time_grid = fields.time_mesh(**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params)
-        field_arr = fields.field(time_grid[:-1], **fixed_params, **{scan_param: val1, scan_param2: val2})
-        H_arr     = H_fn(field_arr)
+        # define the time grid and split into batches
+        all_time     = fields.time_mesh(**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params)
+        time_batches = tf.data.Dataset.from_tensor_slices(all_time[:-1]).batch(batch_size)
+        dt_batches   = tf.data.Dataset.from_tensor_slices(np.diff(all_time).astype(complex)).batch(batch_size)
+
+        # calculate Hamiltonians at each timestep
+        E = lambda t: fields.field(t, **{**fixed_params, scan_param: val1, scan_param2: val2})
+        H_batches = time_batches.map(E).map(H_fn)
+
+        # multiply all Hamiltonians with -i*dt at each step, and exponentiate
+        exp_batches = tf.data.Dataset.zip((H_batches, dt_batches))
+        exp_batches = exp_batches.map(lambda H,dt: -1j*dt[:,np.newaxis,np.newaxis]*H)
+        exp_batches = exp_batches.prefetch(4)
 
         # calculate time-evolution operator
-        dt = np.diff(time_grid)
-        dU = expm_arr(-1j * dt[:,np.newaxis,np.newaxis] * H_arr, s=time_params["s"])
-        U = reduce(np.matmul, dU)
+        U = tf.eye(64, dtype=tf.complex128)
+        for exponent in exp_batches:
+           U = reduce(tf.matmul, expm_arr_tf(exponent, s=time_params["s"])) @ U
 
         # evaluate transition probability
-        _, P = np.linalg.eigh(H_arr[-1])
+        _, P = np.linalg.eigh(H_fn([E(all_time[-1])])[0])
         trans = np.abs(P @ U @ np.linalg.inv(P))**2
         exit_probs.append( 1 - trans[state_idx][state_idx] )
 
@@ -57,13 +71,14 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
         print(num_timesteps)
 
         # split job into specified number of chunks
-        scan_chunks = np.split(scan_space, COMM.size)
+        scan_chunks = np.array_split(scan_space, COMM.size)
     else:
         scan_chunks = None
 
     # scatter jobs across cores
     in_chunk   = COMM.scatter(scan_chunks, root=0)
-    out_chunk  = run_scan(in_chunk, **scan_params)
+    with tf.device('/device:GPU:'+str(COMM.rank)):
+       out_chunk  = run_scan(in_chunk, **scan_params)
     exit_probs = MPI.COMM_WORLD.gather(out_chunk, root=0)
 
     # collect the results together
@@ -71,6 +86,9 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
         # unshuffle
         shuffled_results = np.ravel(exit_probs)
         unshuffled_results = np.zeros(shuffled_results.shape)
+        print(exit_probs)
+        print()
+        print(shuffled_results)
         unshuffled_results[permutation] = shuffled_results
 
         # write to file
