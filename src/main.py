@@ -57,7 +57,7 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
         print(num_timesteps)
 
         # split job into specified number of chunks
-        scan_chunks = np.split(scan_space, COMM.size)
+        scan_chunks = np.array_split(scan_space, COMM.size)
     else:
         scan_chunks = None
 
@@ -69,7 +69,7 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
     # collect the results together
     if COMM.rank == 0:
         # unshuffle
-        shuffled_results = np.ravel(exit_probs)
+        shuffled_results = np.sum(exit_probs) #flatten
         unshuffled_results = np.zeros(shuffled_results.shape)
         unshuffled_results[permutation] = shuffled_results
 
