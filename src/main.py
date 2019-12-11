@@ -69,7 +69,7 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
     # collect the results together
     if COMM.rank == 0:
         # unshuffle
-        shuffled_results = np.sum(exit_probs) #flatten
+        shuffled_results = np.array(sum(exit_probs,[])) #flatten
         unshuffled_results = np.zeros(shuffled_results.shape)
         unshuffled_results[permutation] = shuffled_results
 
