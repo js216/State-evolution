@@ -31,17 +31,7 @@ Note that the present code collection only requires one function to be defined,
 `load_Hamiltonian(fname)`, which has to return a Hamiltonian `H(fields)` for a
 list of fields `[[Ex, Ey, Ez, Bx, By, Bz], ...]`.
 
-The fields are defined in `fields.py` as a set of functions of time and
-(scannable) parameters. The scan code only requires two to be defined:
-
-- `field(t, **params)`: returns a `numpy` array of the fields at a particular
-  point in time (see code for details)
-
-- `time_mesh(**params)`: returns an appropriate time mesh on which to evaluate
-  the state evolution (i.e., the time steps are the more densely packed when the
-  fields and thus the Hamiltonian are expected to vary quickly with time)
-
-Finally, `main.py` is the script to be used to run a scan over parameters. Note
+`main.py` is the script to be used to run a scan over parameters. Note
 the final `if __name__ == '__main__'` statement, requiring two arguments to the
 script: the "run directory", and the filename of the "option file" (to be
 explained in the next section). The scan results are written in the appropriate
@@ -60,6 +50,10 @@ place in the `run_dir`, and the plots into `plots`.
      in the `numpy` format. Four such files are already provided in the
      directory [matrices](https://github.com/js216/State-evolution/tree/master/matrices)
 
+   - `field_str` a list of six strings, each defines the Python code to run to
+     generate the corresponding field component as a function of time `t` and
+     fixed/scannable parameters (as defined in the next few fields)
+
    - `scan_param` and `scan_range`, giving the parameter that is to be scanned
      over
 
@@ -67,13 +61,16 @@ place in the `run_dir`, and the plots into `plots`.
      the other scanned parameter
 
    - `fixed_params`, giving the names and values of the fixed parameters that
-     are to be passed to the `field` function, as well as displayed in the plots
+     are to be passed to the field functions, as well as displayed in the plots
 
    - `time_params` are used by `time_mesh()` together with all the field
      parameters to determine how fine a time mesh to make
 
-   - `state_idx` determines which state's  in the enumeration of eigenstates of
-     `H(t=field(t_final))`
+   - `state_idx` determines which state index (in the enumeration of eigenstates
+     of `H(t=field(t_final))`) is used for calculating the exit probabilities
+
+   - `s` determines the level of approximation to be used for calculating matrix
+     exponentials
 
 3. Run the `main.py` script, giving it the run directory, and the `.json` file
    as arguments. For example:
