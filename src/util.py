@@ -33,3 +33,6 @@ def expm_arr(A_arr, s):
         X = X @ X
     
     return X
+
+def eval_num(expr, scope):
+    return eval(expr, {**scope, 'np':np})

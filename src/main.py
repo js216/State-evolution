@@ -10,34 +10,31 @@ from functools import reduce
 import matplotlib.pyplot as plt
 
 import TlF
-import fields
-from util import expm_arr
+from util import expm_arr, eval_num
 
 # default MPI communicator
 COMM = MPI.COMM_WORLD
 
-def run_scan(val_range, H_fname, fixed_params, time_params, state_idx,
-             scan_param, scan_param2="none", batch_size=16384, **kwargs):
+def run_scan(val_range, H_fname, state_idx, s, scan_param, field_str,
+        fixed_params, time_params, scan_param2="none", batch_size=16384, **kwargs):
     # import Hamiltonian
     H_fn = TlF.load_Hamiltonian(H_fname)
 
     exit_probs = []
     for val1,val2 in tqdm(val_range):
-        # define time grid and split into batches
-        all_time   = fields.time_mesh(**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params)
-        num_batches = 1 if batch_size >= len(all_time) else len(all_time)//batch_size
-        t_batches  = np.array_split(all_time[:-1], num_batches)
-        dt_batches = np.array_split(np.diff(all_time), num_batches)
+        # import parameters and define time grid
+        phys_params = {**{scan_param: val1, scan_param2: val2}, **fixed_params, **time_params, **kwargs}
+        t_batches, dt_batches = time_mesh(phys_params)
 
         # calculate time-evolution operator
         U = np.eye(H_fn([[0,0,0,0,0,0]]).shape[-1])
-        for t_arr, dt_arr in zip(t_batches, dt_batches):
-            field_arr = fields.field(t_arr, **fixed_params, **{scan_param: val1, scan_param2: val2})
-            dU = expm_arr(-1j * 2*np.pi * dt_arr[:,np.newaxis,np.newaxis] * H_fn(field_arr), s=time_params["s"])
+        for t, dt in zip(t_batches, dt_batches):
+            field = np.transpose([eval_num(x,{**phys_params,'t':t}) for x in field_str])
+            dU = expm_arr(-1j * 2*np.pi * dt[:,np.newaxis,np.newaxis] * H_fn(field), s)
             U = U @ reduce(np.matmul, dU)
 
         # evaluate transition probability
-        _, P = np.linalg.eigh(H_fn([field_arr[-1]])[0])
+        _, P = np.linalg.eigh(H_fn([field[-1]])[0])
         trans = np.abs(P @ U @ np.linalg.inv(P))**2
         exit_probs.append( 1 - trans[state_idx][state_idx] )
 
@@ -45,6 +42,12 @@ def run_scan(val_range, H_fname, fixed_params, time_params, state_idx,
 
 
 def process(result_fname, scan_range, scan_range2=None, **scan_params):
+    """Distribute work and collect results.
+
+    Arguments:
+    result_fname:     text file for storing calculation results
+    scan_range, etc.: parameters describing the scan (from options file)
+    """
     if COMM.rank == 0:
         # flatten a 2D scan (if applicable)
         range1 = np.linspace(**scan_range)
@@ -86,7 +89,60 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
             ], f)
 
 
+def time_mesh(phys_params):
+    """Generate a time mesh given mesh parameters.
+
+    Arguments:
+    phys_params: dict with mesh-defining parameters
+
+    The following elements are required in the dict:
+    t_final:    final time of state evolution (str -> float)
+    num_segm:   number of mesh segments (str -> int)
+    segm_pts:   number of timesteps per time at time T (str -> int)
+    batch_size: maximum number of steps per batch
+
+    Returns:
+    t_batches:  time grid, batched
+    dt_batches: time differences, batched
+    """
+    # split the time period into a number of segments
+    segm = np.linspace(
+            start = 0,
+            stop  = eval_num(phys_params["t_final"],phys_params),
+            num   = max(eval_num(phys_params["num_segm"],phys_params), 1))
+
+    # make a sub-mesh for each of the segments
+    t = []
+    for i in range(len(segm)-1):
+        N_pts = eval_num(phys_params["segm_pts"],{**phys_params, 'T':segm[i]}) * (segm[i+1]-segm[i])
+        t.extend(np.linspace(segm[i], segm[i+1], int(N_pts)))
+
+    # split into batches
+    num_batches = max(1, len(t)//phys_params["batch_size"]-1)
+    t_batches  = np.array_split(t[:-1],     num_batches)
+    dt_batches = np.array_split(np.diff(t), num_batches)
+
+    return t_batches, dt_batches
+
+
+def estimate_runtime(val_range, fixed_params, time_params, scan_param, scan_param2="none", **kwargs):
+    num_timesteps = 0
+    for val1,val2 in val_range:
+        phys_params = {**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params}
+        num_timesteps += len(np.ravel(time_mesh(phys_params)))
+    return num_timesteps
+
+
 def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
+    """Plot calculation results.
+
+    Arguments:
+    run_dir:       directory containing information about a scan
+    options_fname: filename within run_dir/options
+    title:         optional extra text for plot title
+    vmin:          optional vmin for 2D plots
+    vmax:          optional vmax for 2D plots
+    """
     # define plot format
     SMALL_SIZE = 16
     MEDIUM_SIZE = 20
@@ -139,8 +195,6 @@ def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
     longtitle = title + option_dict["H_fname"].split("/")[-1] + ", "
     longtitle += ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
             for (key, value) in option_dict["fixed_params"].items()])
-    longtitle += ", " + ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
-            for (key, value) in option_dict["time_params"].items()])
     plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16})
     final_time = "eval time = "+str(datetime.timedelta(seconds=round(eval_time)))
     final_time += " @ " + '%.2e' % num_timesteps + " steps"
@@ -151,14 +205,6 @@ def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
     plt.tight_layout()
     plt.savefig(run_dir+"/plots/"+options_fname[:-5]+"-"+results_md5+".png")
     plt.close()
-
-
-def estimate_runtime(val_range, fixed_params, time_params, scan_param, scan_param2="none", **kwargs):
-    num_timesteps = 0
-    for val1,val2 in val_range:
-        time_grid = fields.time_mesh(**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params)
-        num_timesteps += len(time_grid)
-    return num_timesteps
 
 
 if __name__ == '__main__':
