@@ -33,7 +33,7 @@ def run_scan(val_range, H_fname, fixed_params, time_params, state_idx,
         U = np.eye(H_fn([[0,0,0,0,0,0]]).shape[-1])
         for t_arr, dt_arr in zip(t_batches, dt_batches):
             field_arr = fields.field(t_arr, **fixed_params, **{scan_param: val1, scan_param2: val2})
-            dU = expm_arr(-1j * dt_arr[:,np.newaxis,np.newaxis] * H_fn(field_arr), s=time_params["s"])
+            dU = expm_arr(-1j * 2*np.pi * dt_arr[:,np.newaxis,np.newaxis] * H_fn(field_arr), s=time_params["s"])
             U = U @ reduce(np.matmul, dU)
 
         # evaluate transition probability
