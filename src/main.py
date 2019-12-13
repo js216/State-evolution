@@ -16,24 +16,28 @@ from util import expm_arr
 # default MPI communicator
 COMM = MPI.COMM_WORLD
 
-def run_scan(val_range, H_fname, fixed_params, time_params, state_idx, scan_param, scan_param2="none", **kwargs):
+def run_scan(val_range, H_fname, fixed_params, time_params, state_idx,
+             scan_param, scan_param2="none", batch_size=16384, **kwargs):
     # import Hamiltonian
     H_fn = TlF.load_Hamiltonian(H_fname)
 
     exit_probs = []
     for val1,val2 in tqdm(val_range):
-        # define time grid, field, and Hamiltonian
-        time_grid = fields.time_mesh(**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params)
-        field_arr = fields.field(time_grid[:-1], **fixed_params, **{scan_param: val1, scan_param2: val2})
-        H_arr     = H_fn(field_arr)
+        # define time grid and split into batches
+        all_time   = fields.time_mesh(**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params)
+        num_batches = 1 if batch_size >= len(all_time) else len(all_time)//batch_size
+        t_batches  = np.array_split(all_time[:-1], num_batches)
+        dt_batches = np.array_split(np.diff(all_time), num_batches)
 
         # calculate time-evolution operator
-        dt = np.diff(time_grid)
-        dU = expm_arr(-1j * dt[:,np.newaxis,np.newaxis] * H_arr, s=time_params["s"])
-        U = reduce(np.matmul, dU)
+        U = np.eye(H_fn([[0,0,0,0,0,0]]).shape[-1])
+        for t_arr, dt_arr in zip(t_batches, dt_batches):
+            field_arr = fields.field(t_arr, **fixed_params, **{scan_param: val1, scan_param2: val2})
+            dU = expm_arr(-1j * dt_arr[:,np.newaxis,np.newaxis] * H_fn(field_arr), s=time_params["s"])
+            U = U @ reduce(np.matmul, dU)
 
         # evaluate transition probability
-        _, P = np.linalg.eigh(H_arr[-1])
+        _, P = np.linalg.eigh(H_fn([field_arr[-1]])[0])
         trans = np.abs(P @ U @ np.linalg.inv(P))**2
         exit_probs.append( 1 - trans[state_idx][state_idx] )
 
