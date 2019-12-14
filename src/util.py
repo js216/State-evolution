@@ -1,6 +1,11 @@
 import numpy as np
+from scipy.linalg import expm
 
 def expm_arr(A_arr, s):
+    # check if regular expm can be used
+    if A_arr.shape[0] == 1:
+       return np.array([expm(A_arr[0])])
+
     # calculate powers of A
     A2 = A_arr @ A_arr
     A4 = A2 @ A2
