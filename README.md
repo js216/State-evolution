@@ -63,6 +63,8 @@ place in the `run_dir`, and the plots into `plots`.
    - `fixed_params`, giving the names and values of the fixed parameters that
      are to be passed to the field functions, as well as displayed in the plots
 
+   - `units`, defining units for all parameters (used for labelling plots)
+
    - `time_params` are used by `time_mesh()` together with all the field
      parameters to determine how fine a time mesh to make
 

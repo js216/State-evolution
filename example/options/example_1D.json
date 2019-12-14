@@ -1,6 +1,6 @@
 {
   "H_fname"       : "matrices/H3.npy",
-  "field_str" : [
+  "field_str": [
      "0*t",
      "0*t",
      "DCi - DCslope*t + ACi * np.heaviside( DCi/DCslope+deltaT - t, 1) * np.cos(ACw*t)",
@@ -20,10 +20,17 @@
     "DCslope"     : 2.75e8,
     "deltaT"      : 1
   },
+  "units": {
+    "ACi"         : "V/cm",
+    "ACw"         : "Hz",
+    "DCi"         : "V/cm",
+    "DCslope"     : "V/cm/s",
+    "deltaT"      : "s"
+  },
   "time_params": {
     "num_segm"    : "int(3*DCi/DCslope*ACw/(2*np.pi)/2)",
     "t_final"     : "2 * DCi / DCslope",
-    "segm_pts"    : "0.005 * (DCslope + ACw*ACi*np.heaviside(DCi/DCslope+deltaT - T,1))",
+    "segm_pts"    : "0.005 * (DCslope + ACw*ACi*np.heaviside(DCi/DCslope+deltaT - T0,1))",
     "batch_size"  : 1
   },
   "state_idx"     : 35,

@@ -61,6 +61,8 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
         # for runtime analysis
         start_time = time.time()
         num_timesteps = estimate_runtime(scan_space, **option_dict)
+        if num_timesteps == 0:
+           raise Exception("Time mesh error: zero timesteps.")
         print(num_timesteps)
 
         # split job into specified number of chunks
@@ -98,7 +100,7 @@ def time_mesh(phys_params):
     The following elements are required in the dict:
     t_final:    final time of state evolution (str -> float)
     num_segm:   number of mesh segments (str -> int)
-    segm_pts:   number of timesteps per time at time T (str -> int)
+    segm_pts:   timesteps/time in interval [T0,T1] (str -> int)
     batch_size: maximum number of steps per batch
 
     Returns:
@@ -109,12 +111,14 @@ def time_mesh(phys_params):
     segm = np.linspace(
             start = 0,
             stop  = eval_num(phys_params["t_final"],phys_params),
-            num   = max(eval_num(phys_params["num_segm"],phys_params), 1))
+            num   = max(eval_num(phys_params["num_segm"],phys_params), 2))
 
     # make a sub-mesh for each of the segments
     t = []
     for i in range(len(segm)-1):
-        N_pts = eval_num(phys_params["segm_pts"],{**phys_params, 'T':segm[i]}) * (segm[i+1]-segm[i])
+        N_pts = eval_num(
+              phys_params["segm_pts"],
+              {**phys_params, 'T0':segm[i], 'T1':segm[i+1]})
         t.extend(np.linspace(segm[i], segm[i+1], int(N_pts)))
 
     # split into batches
@@ -156,15 +160,6 @@ def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
     plt.rc('axes.formatter', limits=(-5,5))  # tick labels go into scientific notation at 1e5, 1e-5
 
-    # define units
-    units = {
-        "DCi"     : "V/cm",
-        "DCslope" : "V/cm/s",
-        "ACi"     : "V/cm",
-        "deltaT"  : "s",
-        "ACw"     : "Hz",
-    }
-
     # import run options dict
     with open(run_dir+"/options/"+options_fname) as options_file:
         option_dict = json.load(options_file)
@@ -174,22 +169,16 @@ def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
     with open(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt") as f:
         num_timesteps, eval_time, results = json.load(f)
 
-    # 2D scan
+    # draw the plots
     if "scan_range2" in option_dict:
         range1 = np.linspace(**option_dict["scan_range"])
         range2 = np.linspace(**option_dict["scan_range2"])
         X, Y = np.meshgrid(range2, range1)
         Z    = np.reshape(results, X.shape, order='F')
         plt.pcolormesh(Y, X, Z, cmap="nipy_spectral", vmin=vmin, vmax=vmax)
-        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
-        plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
         plt.colorbar()
-
-    # 1D scan
     else:
        plt.plot(np.linspace(**option_dict["scan_range"]), results, lw=2, color="black")
-       plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
-       plt.ylabel("$P_\mathrm{exit}$ from state "+str(option_dict["state_idx"]))
 
     # plot labels
     longtitle = title + option_dict["H_fname"].split("/")[-1] + ", "
@@ -199,6 +188,13 @@ def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
     final_time = "eval time = "+str(datetime.timedelta(seconds=round(eval_time)))
     final_time += " @ " + '%.2e' % num_timesteps + " steps"
     plt.text(1.01, .05, final_time, transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
+    units = option_dict["units"]
+    if "scan_range2" in option_dict:
+       plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
+       plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
+    else:
+       plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
+       plt.ylabel("$P_\mathrm{exit}$ from state "+str(option_dict["state_idx"]))
 
     # save plot to file
     plt.grid()
