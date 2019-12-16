@@ -205,10 +205,11 @@ def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
     longtitle = title + option_dict["H_fname"].split("/")[-1] + ", "
     longtitle += ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
             for (key, value) in option_dict["fixed_params"].items()])
-    plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16})
+    plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16}, pad=25)
     final_time = "eval time = "+str(datetime.timedelta(seconds=round(eval_time)))
     final_time += " @ " + '%.2e' % num_timesteps + " steps"
     plt.text(1.01, .05, final_time, transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
+    plt.text(.55, 1.01, results_md5, transform=plt.gca().transAxes, fontdict={'fontsize':8})
     units = option_dict["units"]
     if "scan_range2" in option_dict:
        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
