@@ -57,7 +57,7 @@ place in the `run_dir`, and the plots into `plots`.
 ### Options file
 
 The so-called options file has to be formatted as a JSON file, and be a dict
-contaning the following keys:
+containing the following keys:
 
 - `H_fname`, giving the filename of matrix elements of the chosen Hamiltonian
   in the `numpy` format. Four such files are already provided in the
