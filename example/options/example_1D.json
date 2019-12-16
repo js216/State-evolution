@@ -10,7 +10,7 @@
   ],
   "scan_param"    : "ACi",
   "scan_range": {
-    "start"       : 500,
+    "start"       : 0,
     "stop"        : 2500,
     "num"         : 250
   },
