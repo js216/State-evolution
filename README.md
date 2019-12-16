@@ -82,6 +82,32 @@ place in the `run_dir`, and the plots into `plots`.
    The program prints the number of time steps to be used with the chosen time
    mesh, and the progress of the calculation (using `tqdm`).
 
+### Time mesh details
+
+The time mesh is defined by the four parameters inside the `time_params` dict:
+
+- `t_final`: time evolution takes place between `t=0` and `t=t_final`
+- `num_segm`: number of equal-size segments the entire evolution time from 0 to
+  `t_final` is divided into (allowing each segment to have a different timestep
+  density)
+- `segm_pts`: number of points per segment, where the time endpoints of the
+  segment are given as `T0` and `T1`
+- `batch_size`: time evolution (i.e., field calculation, exponentiation of
+  `-i*dt*H, matrix products) is done in batches of given size; size shouldn't
+  affect the result, only the amount of memory used
+
+If batch size is anything but 1, the special `expm_arr` function (defined in
+`util.py`) is used to exponentiate the entire batch at once. That is useful for
+small Hamiltonians on systems with a large parallel processing capability (i.e.,
+many cores).
+
+If batch size is not set to 1, then the `s` parameter (giving the number of
+squarings in the expm algorithm) also has to be defined in the options file.
+Whereas `scipy.linalg.expm` estimates `s` automatically, `expm_arr` does not.
+Since all matrices are to be exponentiated in parallel, they all have to be
+divided, scaled, and squared the same number of times, and that is given by the
+`s` parameter.
+
 ### Parallel evaluation
 
 The most time-consuming part of the calculation, matrix exponentiation, is

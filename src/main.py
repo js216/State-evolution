@@ -1,4 +1,5 @@
 import time
+import pickle
 import os, sys
 import datetime
 import numpy as np
@@ -16,18 +17,28 @@ from util import expm_arr, eval_num
 COMM = MPI.COMM_WORLD
 
 def run_scan(val_range, H_fname, state_idx, s, scan_param, field_str,
-        fixed_params, time_params, scan_param2="none", batch_size=16384, **kwargs):
+        fixed_params, time_params, pickle_fnames=None, scan_param2="none",
+        batch_size=16384, **kwargs):
+
     # import Hamiltonian
     H_fn = TlF.load_Hamiltonian(H_fname)
 
+    # import pickled variables (if any)
+    pickled_vars = {}
+    for key, fname in pickle_fnames.items():
+        with open(fname, 'rb') as f:
+            pickled_vars[key] = pickle.load(f)
+
     exit_probs = []
     for val1,val2 in tqdm(val_range):
-        # import parameters and define time grid
-        phys_params = {**{scan_param: val1, scan_param2: val2}, **fixed_params, **time_params, **kwargs}
-        t_batches, dt_batches = time_mesh(phys_params)
+        # import parameters
+        phys_params = {
+            **{scan_param: val1, scan_param2: val2},
+            **fixed_params, **time_params, **pickled_vars, **kwargs}
 
         # calculate time-evolution operator
         U = np.eye(H_fn([[0,0,0,0,0,0]]).shape[-1])
+        t_batches, dt_batches = time_mesh(phys_params)
         for t, dt in zip(t_batches, dt_batches):
             field = np.transpose([eval_num(x,{**phys_params,'t':t}) for x in field_str])
             dU = expm_arr(-1j * 2*np.pi * dt[:,np.newaxis,np.newaxis] * H_fn(field), s)
@@ -133,7 +144,7 @@ def estimate_runtime(val_range, fixed_params, time_params, scan_param, scan_para
     num_timesteps = 0
     for val1,val2 in val_range:
         phys_params = {**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params}
-        num_timesteps += len(np.ravel(time_mesh(phys_params)))
+        num_timesteps += len(np.ravel(time_mesh(phys_params)[0]))
     return num_timesteps
 
 
