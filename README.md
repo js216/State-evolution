@@ -40,7 +40,10 @@ place in the `run_dir`, and the plots into `plots`.
 ### Basic usage
 
 1. Create a folder ("`run_dir`") with the subdirectories `options`, `plots`, and
-   `results`.
+   `results`. Optionally, create a `slurm` folder for job-submission scripts
+   when running the program on a cluster. An example script is provided, but see
+   [here](https://docs.ycrc.yale.edu/clusters-at-yale/job-scheduling/) for
+   details about job scheduling @ Yale.
 
 2. In the `options` subdirectory, place a file with the extension `.json`,
    defining the scan parameters. Consult the provided example files and the next
