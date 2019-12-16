@@ -25,9 +25,10 @@ def run_scan(val_range, H_fname, state_idx, s, scan_param, field_str,
 
     # import pickled variables (if any)
     pickled_vars = {}
-    for key, fname in pickle_fnames.items():
-        with open(fname, 'rb') as f:
-            pickled_vars[key] = pickle.load(f)
+    if pickle_fnames:
+        for key, fname in pickle_fnames.items():
+            with open(fname, 'rb') as f:
+                pickled_vars[key] = pickle.load(f)
 
     exit_probs = []
     for val1,val2 in tqdm(val_range):
@@ -41,7 +42,7 @@ def run_scan(val_range, H_fname, state_idx, s, scan_param, field_str,
         t_batches, dt_batches = time_mesh(phys_params)
         for t, dt in zip(t_batches, dt_batches):
             field = np.transpose([eval_num(x,{**phys_params,'t':t}) for x in field_str])
-            dU = expm_arr(-1j * 2*np.pi * dt[:,np.newaxis,np.newaxis] * H_fn(field), s)
+            dU = expm_arr(-1j * dt[:,np.newaxis,np.newaxis] * H_fn(field), s)
             U = U @ reduce(np.matmul, dU)
 
         # evaluate transition probability
@@ -144,9 +145,10 @@ def estimate_runtime(val_range, fixed_params, time_params, scan_param,
         pickle_fnames=None, scan_param2="none", **kwargs):
     # import pickled variables (if any)
     pickled_vars = {}
-    for key, fname in pickle_fnames.items():
-        with open(fname, 'rb') as f:
-            pickled_vars[key] = pickle.load(f)
+    if pickle_fnames:
+        for key, fname in pickle_fnames.items():
+            with open(fname, 'rb') as f:
+                pickled_vars[key] = pickle.load(f)
 
     # calculate the size of the entire time mesh for the entire scan
     num_timesteps = 0
