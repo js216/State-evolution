@@ -16,8 +16,8 @@ from util import expm_arr, eval_num
 # default MPI communicator
 COMM = MPI.COMM_WORLD
 
-def run_scan(val_range, H_fname, state_idx, s, scan_param, field_str,
-        fixed_params, time_params, pickle_fnames=None, scan_param2="none",
+def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
+        time_params, s=None, pickle_fnames=None, scan_param2="none",
         batch_size=16384, **kwargs):
 
     # import Hamiltonian
