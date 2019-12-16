@@ -42,7 +42,7 @@ def run_scan(val_range, H_fname, state_idx, s, scan_param, field_str,
         t_batches, dt_batches = time_mesh(phys_params)
         for t, dt in zip(t_batches, dt_batches):
             field = np.transpose([eval_num(x,{**phys_params,'t':t}) for x in field_str])
-            dU = expm_arr(-1j * dt[:,np.newaxis,np.newaxis] * H_fn(field), s)
+            dU = expm_arr(-1j * 2*np.pi * dt[:,np.newaxis,np.newaxis] * H_fn(field), s)
             U = U @ reduce(np.matmul, dU)
 
         # evaluate transition probability
