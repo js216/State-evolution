@@ -75,7 +75,7 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
         num_timesteps = estimate_runtime(scan_space, **option_dict)
         if num_timesteps == 0:
            raise Exception("Time mesh error: zero timesteps.")
-        print(num_timesteps)
+        print("Total number of timesteps: ", num_timesteps)
 
         # split job into specified number of chunks
         scan_chunks = np.array_split(scan_space, COMM.size)
