@@ -140,10 +140,20 @@ def time_mesh(phys_params):
     return t_batches, dt_batches
 
 
-def estimate_runtime(val_range, fixed_params, time_params, scan_param, scan_param2="none", **kwargs):
+def estimate_runtime(val_range, fixed_params, time_params, scan_param,
+        pickle_fnames=None, scan_param2="none", **kwargs):
+    # import pickled variables (if any)
+    pickled_vars = {}
+    for key, fname in pickle_fnames.items():
+        with open(fname, 'rb') as f:
+            pickled_vars[key] = pickle.load(f)
+
+    # calculate the size of the entire time mesh for the entire scan
     num_timesteps = 0
     for val1,val2 in val_range:
-        phys_params = {**fixed_params, **{scan_param: val1, scan_param2: val2}, **time_params}
+        phys_params = {
+            **{scan_param: val1, scan_param2: val2},
+            **fixed_params, **time_params, **pickled_vars, **kwargs}
         num_timesteps += len(np.ravel(time_mesh(phys_params)[0]))
     return num_timesteps
 
