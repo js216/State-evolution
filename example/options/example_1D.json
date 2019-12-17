@@ -1,5 +1,5 @@
 {
-  "H_fname"       : "matrices/H3.npy",
+  "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H3.npy",
   "field_str": [
      "0*t",
      "0*t",
@@ -10,15 +10,15 @@
   ],
   "scan_param"    : "ACi",
   "scan_range": {
-    "start"       : 500,
+    "start"       : 0,
     "stop"        : 2500,
-    "num"         : 25
+    "num"         : 250
   },
   "fixed_params": {
     "ACw"         : 10e6,
     "DCi"         : 500,
     "DCslope"     : 2.75e8,
-    "deltaT"      : 1
+    "deltaT"      : 2e-6
   },
   "units": {
     "ACi"         : "V/cm",
@@ -30,9 +30,9 @@
   "time_params": {
     "num_segm"    : "int(3*DCi/DCslope*ACw/(2*np.pi)/2)",
     "t_final"     : "2 * DCi / DCslope",
-    "segm_pts"    : "0.005 * (DCslope + ACw*ACi*np.heaviside(DCi/DCslope+deltaT - T0,1))",
+    "segm_pts"    : "0.034 * (DCslope*(T1-T0) + ACi*ACw*DCi/DCslope/np.pi)",
     "batch_size"  : 1
   },
   "state_idx"     : 35,
-  "s"             : 15
+  "s"             : -1
 }

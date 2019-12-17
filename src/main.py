@@ -16,8 +16,8 @@ from util import expm_arr, eval_num
 # default MPI communicator
 COMM = MPI.COMM_WORLD
 
-def run_scan(val_range, H_fname, state_idx, s, scan_param, field_str,
-        fixed_params, time_params, pickle_fnames=None, scan_param2="none",
+def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
+        time_params, s=None, pickle_fnames=None, scan_param2="none",
         batch_size=16384, **kwargs):
 
     # import Hamiltonian
@@ -25,9 +25,10 @@ def run_scan(val_range, H_fname, state_idx, s, scan_param, field_str,
 
     # import pickled variables (if any)
     pickled_vars = {}
-    for key, fname in pickle_fnames.items():
-        with open(fname, 'rb') as f:
-            pickled_vars[key] = pickle.load(f)
+    if pickle_fnames:
+        for key, fname in pickle_fnames.items():
+            with open(fname, 'rb') as f:
+                pickled_vars[key] = pickle.load(f)
 
     exit_probs = []
     for val1,val2 in tqdm(val_range):
@@ -45,9 +46,9 @@ def run_scan(val_range, H_fname, state_idx, s, scan_param, field_str,
             U = U @ reduce(np.matmul, dU)
 
         # evaluate transition probability
-        _, P = np.linalg.eigh(H_fn([field[-1]])[0])
-        trans = np.abs(P @ U @ np.linalg.inv(P))**2
-        exit_probs.append( 1 - trans[state_idx][state_idx] )
+        psi_i = np.linalg.eigh(H_fn([field[0]])[0])[1][state_idx]
+        psi_f = np.linalg.eigh(H_fn([field[-1]])[0])[1][state_idx]
+        exit_probs.append(1 - np.abs(psi_f @ U @ psi_i)**2)
 
     return exit_probs
 
@@ -74,7 +75,7 @@ def process(result_fname, scan_range, scan_range2=None, **scan_params):
         num_timesteps = estimate_runtime(scan_space, **option_dict)
         if num_timesteps == 0:
            raise Exception("Time mesh error: zero timesteps.")
-        print(num_timesteps)
+        print("Total number of timesteps: ", num_timesteps)
 
         # split job into specified number of chunks
         scan_chunks = np.array_split(scan_space, COMM.size)
@@ -144,9 +145,10 @@ def estimate_runtime(val_range, fixed_params, time_params, scan_param,
         pickle_fnames=None, scan_param2="none", **kwargs):
     # import pickled variables (if any)
     pickled_vars = {}
-    for key, fname in pickle_fnames.items():
-        with open(fname, 'rb') as f:
-            pickled_vars[key] = pickle.load(f)
+    if pickle_fnames:
+        for key, fname in pickle_fnames.items():
+            with open(fname, 'rb') as f:
+                pickled_vars[key] = pickle.load(f)
 
     # calculate the size of the entire time mesh for the entire scan
     num_timesteps = 0
@@ -158,7 +160,7 @@ def estimate_runtime(val_range, fixed_params, time_params, scan_param,
     return num_timesteps
 
 
-def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
+def plot(run_dir, options_fname, vmin=None, vmax=None):
     """Plot calculation results.
 
     Arguments:
@@ -195,21 +197,24 @@ def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
         range1 = np.linspace(**option_dict["scan_range"])
         range2 = np.linspace(**option_dict["scan_range2"])
         X, Y = np.meshgrid(range2, range1)
-        Z    = np.reshape(results, X.shape, order='F')
+        Z    = np.reshape(results, X.shape, order='C')
         plt.pcolormesh(Y, X, Z, cmap="nipy_spectral", vmin=vmin, vmax=vmax)
         plt.colorbar()
     else:
        plt.plot(np.linspace(**option_dict["scan_range"]), results, lw=2, color="black")
 
     # plot labels
-    longtitle = title + option_dict["H_fname"].split("/")[-1] + ", "
+    longtitle = option_dict["H_fname"].split("/")[-1] + ", "
     longtitle += ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
             for (key, value) in option_dict["fixed_params"].items()])
+    if option_dict.get("comment"):
+        longtitle += str(option_dict.get("comment"))
     plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16}, pad=25)
     final_time = "eval time = "+str(datetime.timedelta(seconds=round(eval_time)))
     final_time += " @ " + '%.2e' % num_timesteps + " steps"
     plt.text(1.01, .05, final_time, transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
-    plt.text(.55, 1.01, results_md5, transform=plt.gca().transAxes, fontdict={'fontsize':8})
+    plt.text(1.00, 1.01, options_fname[:-5]+"-"+results_md5,
+          transform=plt.gca().transAxes, fontdict={'fontsize':8}, ha="right")
     units = option_dict["units"]
     if "scan_range2" in option_dict:
        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
@@ -247,4 +252,4 @@ if __name__ == '__main__':
 
     # plot results
     if COMM.rank == 0:
-        plot(run_dir, options_fname, title="")
+        plot(run_dir, options_fname)
