@@ -20,7 +20,7 @@ matrix elements
     T_ij = | ⟨i|U|j⟩ |^2,
 
 where ⟨i| is the i-th eigenstate in the basis of final fields, and |j⟩ is the
-j-th state in the final basis. The "exit probability" from state `i`, finally,
+j-th state in the initial basis. The "exit probability" from state `i`, finally,
 is defined as 1 − `T_ii`.
 
 ### Code structure
