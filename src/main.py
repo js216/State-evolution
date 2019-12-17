@@ -41,14 +41,14 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
         U = np.eye(H_fn([[0,0,0,0,0,0]]).shape[-1])
         t_batches, dt_batches = time_mesh(phys_params)
         for t, dt in zip(t_batches, dt_batches):
-            field = np.transpose([eval_num(x,{**phys_params,'t':t}) for x in field_str])
-            dU = expm_arr(-1j * 2*np.pi * dt[:,np.newaxis,np.newaxis] * H_fn(field), s)
+            H = H_fn(field(field_str, phys_params, t))
+            dU = expm_arr(-1j * 2*np.pi * dt[:,np.newaxis,np.newaxis] * H, s)
             U = U @ reduce(np.matmul, dU)
 
         # evaluate transition probability
-        psi_i = np.linalg.eigh(H_fn([field[0]])[0])[1][state_idx]
-        psi_f = np.linalg.eigh(H_fn([field[-1]])[0])[1][state_idx]
-        exit_probs.append(1 - np.abs(psi_f @ U @ psi_i)**2)
+        psi_i = eig_state(H_fn, field_str, phys_params, t_batches[-1][-1],   state_idx)
+        psi_f = eig_state(H_fn, field_str, phys_params, t_batches[-1][-1], state_idx)
+        exit_probs.append(1 - np.abs(psi_f.conj() @ U @ psi_i)**2)
 
     return exit_probs
 
@@ -139,6 +139,16 @@ def time_mesh(phys_params):
     dt_batches = np.array_split(np.diff(t), num_batches)
 
     return t_batches, dt_batches
+
+
+def field(field_str, phys_params, t_arr):
+    """Return list of fields given a list of times."""
+    return np.transpose([eval_num(x,{**phys_params,'t':t_arr}) for x in field_str])
+
+
+def eig_state(H_fn, field_str, phys_params, t, state_idx):
+    """Return eigenstate at a given time."""
+    return np.linalg.eigh(H_fn(field(field_str,phys_params,np.array([t])))[0])[1][:,state_idx]
 
 
 def estimate_runtime(val_range, fixed_params, time_params, scan_param,

@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --partition       day
 #SBATCH --job-name        example_1D
-#SBATCH --nodes           10
-#SBATCH --ntasks-per-node 3
+#SBATCH --nodes           5
+#SBATCH --ntasks-per-node 1
 #SBATCH --cpus-per-task   10
 #SBATCH --mem-per-cpu     20M
 #SBATCH --time            00:30:00
@@ -25,7 +25,8 @@ else
 fi
 export OMP_NUM_THREADS=$omp_threads
 echo Number of OpenMP threads: $OMP_NUM_THREADS
+mpi_params="--mca mpi_warn_on_fork 0"
 
 #mpirun -n 1 python3 -m cProfile -s tottime $prog $run_dir $options_file
 #python3 $prog $run_dir $options_file
-mpirun -n 30 python3 $prog $run_dir $options_file
+mpirun -n 5 $mpi_params python3 $prog $run_dir $options_file
