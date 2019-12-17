@@ -122,7 +122,7 @@ def time_mesh(phys_params):
     segm = np.linspace(
             start = 0,
             stop  = eval_num(phys_params["t_final"],phys_params),
-            num   = max(eval_num(phys_params["num_segm"],phys_params), 2))
+            num   = max(eval_num(phys_params["num_segm"],phys_params), 1)+1)
 
     # make a sub-mesh for each of the segments
     t = []
