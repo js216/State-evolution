@@ -43,12 +43,12 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
         for t, dt in zip(t_batches, dt_batches):
             field = np.transpose([eval_num(x,{**phys_params,'t':t}) for x in field_str])
             dU = expm_arr(-1j * 2*np.pi * dt[:,np.newaxis,np.newaxis] * H_fn(field), s)
-            U = U @ reduce(np.matmul, dU)
+            U =  reduce(np.matmul, dU[::-1])@ U
 
         # evaluate transition probability
-        psi_i = np.linalg.eigh(H_fn([field[0]])[0])[1][state_idx]
-        psi_f = np.linalg.eigh(H_fn([field[-1]])[0])[1][state_idx]
-        exit_probs.append(1 - np.abs(psi_f @ U @ psi_i)**2)
+        psi_i = np.linalg.eigh(H_fn([field[0]])[0])[1][:,state_idx]
+        psi_f = np.linalg.eigh(H_fn([field[-1]])[0])[1][:,state_idx]
+        exit_probs.append(1 - np.abs(psi_f.conj() @ U @ psi_i)**2)
 
     return exit_probs
 
