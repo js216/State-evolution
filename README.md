@@ -17,10 +17,11 @@ calculated as the time-ordered exponential
 formally solving the Schroedinger equation. Then, we find the transition
 matrix elements
 
-    T_ij = | ⟨j|U|i⟩ |^2
+    T_ij = | ⟨i|U|j⟩ |^2,
 
-in the eigenbasis of `H` at the final fields. The "exit probability" from state
-`i`, finally, is defined as 1 − `T_ii`.
+where ⟨i| is the i-th eigenstate in the basis of final fields, and |j⟩ is the
+j-th state in the final basis. The "exit probability" from state `i`, finally,
+is defined as 1 − `T_ii`.
 
 ### Code structure
 
