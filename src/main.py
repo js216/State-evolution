@@ -204,7 +204,7 @@ def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
        plt.plot(np.linspace(**option_dict["scan_range"]), results, lw=2, color="black")
 
     # plot labels
-    longtitle = title + option_dict["H_fname"].split("/")[-1] + ", "
+    longtitle = option_dict["H_fname"].split("/")[-1] + ", "
     longtitle += ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
             for (key, value) in option_dict["fixed_params"].items()])
     plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16}, pad=25)
