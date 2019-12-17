@@ -48,7 +48,7 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
         # evaluate transition probability
         psi_i = np.linalg.eigh(H_fn([field[0]])[0])[1][state_idx]
         psi_f = np.linalg.eigh(H_fn([field[-1]])[0])[1][state_idx]
-        exit_probs.append(1 - np.abs(psi_f * U @ psi_i)**2)
+        exit_probs.append(1 - np.abs(psi_f @ U @ psi_i)**2)
 
     return exit_probs
 
