@@ -46,9 +46,9 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
             U = U @ reduce(np.matmul, dU)
 
         # evaluate transition probability
-        _, P = np.linalg.eigh(H_fn([field[-1]])[0])
-        trans = np.abs(P @ U @ np.linalg.inv(P))**2
-        exit_probs.append( 1 - trans[state_idx][state_idx] )
+        psi_i = np.linalg.eigh(H_fn([field[0]])[0])[1][state_idx]
+        psi_f = np.linalg.eigh(H_fn([field[-1]])[0])[1][state_idx]
+        exit_probs.append(1 - np.abs(psi_f @ U @ psi_i)**2)
 
     return exit_probs
 
@@ -160,7 +160,7 @@ def estimate_runtime(val_range, fixed_params, time_params, scan_param,
     return num_timesteps
 
 
-def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
+def plot(run_dir, options_fname, vmin=None, vmax=None):
     """Plot calculation results.
 
     Arguments:
@@ -207,11 +207,13 @@ def plot(run_dir, options_fname, title="", vmin=None, vmax=None):
     longtitle = option_dict["H_fname"].split("/")[-1] + ", "
     longtitle += ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
             for (key, value) in option_dict["fixed_params"].items()])
+    if option_dict.get("comment"):
+        longtitle += str(option_dict.get("comment"))
     plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16}, pad=25)
     final_time = "eval time = "+str(datetime.timedelta(seconds=round(eval_time)))
     final_time += " @ " + '%.2e' % num_timesteps + " steps"
     plt.text(1.01, .05, final_time, transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
-    plt.text(.55, 1.01, results_md5, transform=plt.gca().transAxes, fontdict={'fontsize':8})
+    plt.text(.55, 1.01, options_fname[:-5]+"-"+results_md5, transform=plt.gca().transAxes, fontdict={'fontsize':8})
     units = option_dict["units"]
     if "scan_range2" in option_dict:
        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
@@ -249,4 +251,4 @@ if __name__ == '__main__':
 
     # plot results
     if COMM.rank == 0:
-        plot(run_dir, options_fname, title="")
+        plot(run_dir, options_fname)
