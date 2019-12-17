@@ -197,7 +197,7 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
         range1 = np.linspace(**option_dict["scan_range"])
         range2 = np.linspace(**option_dict["scan_range2"])
         X, Y = np.meshgrid(range2, range1)
-        Z    = np.reshape(results, X.shape, order='F')
+        Z    = np.reshape(results, X.shape, order='C')
         plt.pcolormesh(Y, X, Z, cmap="nipy_spectral", vmin=vmin, vmax=vmax)
         plt.colorbar()
     else:
@@ -213,7 +213,8 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     final_time = "eval time = "+str(datetime.timedelta(seconds=round(eval_time)))
     final_time += " @ " + '%.2e' % num_timesteps + " steps"
     plt.text(1.01, .05, final_time, transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
-    plt.text(.55, 1.01, options_fname[:-5]+"-"+results_md5, transform=plt.gca().transAxes, fontdict={'fontsize':8})
+    plt.text(1.00, 1.01, options_fname[:-5]+"-"+results_md5,
+          transform=plt.gca().transAxes, fontdict={'fontsize':8}, ha="right")
     units = option_dict["units"]
     if "scan_range2" in option_dict:
        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")

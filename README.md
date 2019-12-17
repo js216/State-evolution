@@ -29,8 +29,9 @@ The Hamiltonian is defined in `TlF.py`, and is given almost entirely without
 comments. For a thorough explanation of how the matrix elements are calculated,
 peruse [this Jupyter notebook](https://github.com/js216/TlF-ground-state-Hamiltonian).
 Note that the present code collection only requires one function to be defined,
-`load_Hamiltonian(fname)`, which has to return a Hamiltonian `H(fields)` for a
-list of fields `[[Ex, Ey, Ez, Bx, By, Bz], ...]`.
+`load_Hamiltonian(fname)`, which has to return a list of Hamiltonian matrices
+`[H(fields[0]), ...` corresponding to a given list of fields `[[Ex, Ey, Ez, Bx,
+By, Bz], ...]`.
 
 `main.py` is the script to be used to run a scan over parameters. Note
 the final `if __name__ == '__main__'` statement, requiring two arguments to the
