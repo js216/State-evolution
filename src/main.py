@@ -1,5 +1,6 @@
 import time
 import pickle
+import logging
 import os, sys
 import datetime
 import numpy as np
@@ -68,7 +69,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
     """
     if COMM.rank == 0:
        # flatten and enumerate a 2D scan (if applicable)
-       range1 = np.linspace(**scan_range)
+       range1 = np.linspace(**scan_range, dtype=np.float64)
        range2 = np.linspace(**scan_range2) if scan_range2 else [0]
        scan_space = np.dstack(np.meshgrid(range1, range2, indexing='ij')).reshape(-1, 2)
        scan_space = np.hstack((np.arange(scan_space.shape[0])[:,np.newaxis], scan_space))
@@ -85,7 +86,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        if len(scan_space) == 0:
           for r in range(1,COMM.size):
              COMM.send(0, dest=r, tag=1)
-          print("No work remains to be done.")
+          logging.info("No work remains to be done.")
           return
 
        # split job into specified number of equal-size chunks
@@ -101,10 +102,12 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
           try:
              COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
           except IndexError:
-             num_ranks = r - 1
+             logging.debug(f"Info: {r-1} batches is not enough work for {COMM.size} ranks.")
+             num_ranks = r
+             break
 
        # ask unneeded workers to quit
-       for i in range(r,COMM.size):
+       for r in range(num_ranks, COMM.size):
           COMM.send(0, dest=r, tag=1)
 
        # for keeping track of workers
@@ -145,6 +148,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
           # quit when there's no more work to be done
           if COMM.iprobe(source=0, tag=1):
              COMM.recv(source=0, tag=1)
+             logging.debug(f"Info: Rank {COMM.rank} exiting.")
              break
 
 def time_mesh(phys_params):
