@@ -112,7 +112,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        data = np.empty((scan_params["chunk_size"], 4))
 
        # distribute the rest of the work
-       with tqdm(total=N) as pbar:
+       with tqdm(total=N, smoothing=0) as pbar:
           while sum(active_workers) > 1:
              # check each worker
              for r in range(1,num_ranks):
