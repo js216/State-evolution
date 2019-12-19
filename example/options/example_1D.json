@@ -12,7 +12,7 @@
   "scan_range": {
     "start"       : 0,
     "stop"        : 2500,
-    "num"         : 250
+    "num"         : 3
   },
   "fixed_params": {
     "ACw"         : 10e6,
@@ -30,10 +30,10 @@
   "time_params": {
     "num_segm"    : "int(3*DCi/DCslope*ACw/(2*np.pi)/2)",
     "t_final"     : "2 * DCi / DCslope",
-    "segm_pts"    : "0.034 * (DCslope*(T1-T0) + ACi*ACw*DCi/DCslope/np.pi)",
+    "segm_pts"    : "0.01 * (DCslope*(T1-T0) + ACi*ACw*DCi/DCslope/np.pi)",
     "batch_size"  : 1
   },
   "state_idx"     : 35,
   "s"             : -1,
-  "chunk_size"    : 10
+  "chunk_size"    : 2
 }

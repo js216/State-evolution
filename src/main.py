@@ -31,9 +31,10 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
                 pickled_vars[key] = pickle.load(f)
 
     exit_probs = []
-    for i,val1,val2 in tqdm(val_range):
+    for i,val1,val2 in (val_range):
         # check there is a parameter value
         if np.isnan(val1) or np.isnan(val2):
+           exit_probs.append(np.nan)
            continue
 
         # import parameters
@@ -54,52 +55,61 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
         psi_f = eig_state(H_fn, field_str, phys_params, t_batches[-1][-1], state_idx)
         exit_probs.append(1 - np.abs(psi_f.conj() @ U @ psi_i)**2)
 
-    return np.hstack((val_range,exit_probs[:,np.newaxis]))
+    return np.hstack((val_range,np.array(exit_probs)[:,np.newaxis]))
 
 
-def process(result_fname, scan_range, scan_range2=None, **scan_params):
+def process(results_fname, scan_range, scan_range2=None, **scan_params):
     """Distribute work and collect results.
 
     Arguments:
-    result_fname:     text file for storing calculation results
+    results_fname:    text file for storing calculation results
     scan_range, etc.: parameters describing the scan (from options file)
     """
     if COMM.rank == 0:
        # flatten and enumerate a 2D scan (if applicable)
-       range1 = np.linspace(**scan_range, dtype=float)
+       range1 = np.linspace(**scan_range, dtype=np.float64)
        range2 = np.linspace(**scan_range2) if scan_range2 else [0]
        scan_space = np.dstack(np.meshgrid(range1, range2, indexing='ij')).reshape(-1, 2)
        scan_space = np.hstack((np.arange(scan_space.shape[0])[:,np.newaxis], scan_space))
 
        # split job into specified number of equal-size chunks
        cs = scan_params["chunk_size"]
-       pad_width   = ((0, cs-len(scan_space)%cs),(0, 0))
+       pad_width   = ((0, (cs-len(scan_space)%cs)%cs),(0, 0))
        scan_space  = np.pad(scan_space, pad_width, 'constant', constant_values=np.nan)
        scan_chunks = np.split(scan_space, scan_space.shape[0]//cs)
 
-       # for keeping track of worker ranks
-       workers = {i : [0, 0, np.empty((cs,4), dtype=np.float64)] for i in range(1,COMM.size)}
+       # send first batches to workers
+       for r in range(1,COMM.size):
+          COMM.Isend(scan_chunks.pop(), dest=r)
 
-       # send work and receive results until scan finished
-       with open(result_fname, "a") as f:
-          while len(scan_chunks) > 0:
-             for rank,(send_req,recv_req,data) in workers.items():
-                # if chunk read by worker, send another one
-                if send_req==0 or send_req.Test():
-                   workers[rank][0] = MPI.Isend(scan_chunks.pop(), dest=rank)
-                   workers[rank][1] = MPI.Irecv(workers[rank][2], source=rank)
+       # distribute the rest of the work
+       data = np.empty((scan_params["chunk_size"], 4))
+       while len(scan_chunks) > 0:
+          for r in range(1,COMM.size):
+             if COMM.iprobe(source=r):
+                # receive results and write to file
+                with open(results_fname, "a") as f:
+                   COMM.Recv(data, source=r)
+                   np.savetxt(f, data)
 
-                # if worker returned results, write them to file
-                elif recv_req.Test():
-                   np.savetxt(f, workers[rank][2])
-             time.sleep(1)
+                # send more work, or tell the worker to quit
+                if len(scan_chunks) > 0:
+                   COMM.Isend(scan_chunks.pop(), dest=r)
+                else:
+                   COMM.send(0, dest=r, tag=1)
+          time.sleep(1)
 
     # for worker ranks
     else:
-       data = numpy.empty((scan_params["chunk_size"],3), dtype=numpy.float64)
+       data = np.empty((scan_params["chunk_size"], 3))
        while True:
+          # get work and return results
           COMM.Recv(data, source=0)
           COMM.Send(run_scan(data, **option_dict), dest=0)
+
+          # quit when there's no more work to be done
+          if COMM.iprobe(source=0, tag=1):
+             break
 
 def time_mesh(phys_params):
     """Generate a time mesh given mesh parameters.
@@ -160,7 +170,7 @@ def import_options(run_dir, options_fname):
    done = os.path.isfile(results_fname)
 
    # return
-   return done, result_fname, option_dict
+   return done, results_fname, option_dict
 
 
 def plot(run_dir, options_fname, vmin=None, vmax=None):
@@ -232,13 +242,15 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
 
 if __name__ == '__main__':
     # import run options
-    done, result_fname, option_dict = import_options(
-          run_dir       = sys.argv[1]
-          options_fname = sys.argv[2])
+    run_dir       = sys.argv[1]
+    options_fname = sys.argv[2]
+    done, results_fname, option_dict = import_options(run_dir, options_fname)
 
     # process if necessary
-    if not done:
-        process(results_fname, **option_dict)
+    #if not done:
+    #    process(results_fname, **option_dict)
+    process(results_fname, **option_dict)
 
     # plot results
-    plot(run_dir, options_fname)
+    #if COMM.rank == 0:
+    #    plot(run_dir, options_fname)
