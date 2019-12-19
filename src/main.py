@@ -114,13 +114,12 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        # distribute the rest of the work
        with tqdm(total=N) as pbar:
           while sum(active_workers) > 1:
-             # for progress monitoring
-             if pbar.n != N-len(scan_chunks):
-                pbar.update(N-len(scan_chunks)-pbar.n)
-
              # check each worker
              for r in range(1,num_ranks):
                 if COMM.iprobe(source=r):
+                   # update progress bar
+                   pbar.update(1)
+
                    # receive results and write to file
                    COMM.Recv(data, source=r)
                    active_workers[r] = 0
