@@ -4,6 +4,7 @@ import os, sys
 import datetime
 import numpy as np
 import json, hashlib
+from math import ceil
 from tqdm import tqdm
 from mpi4py import MPI
 from textwrap import wrap
@@ -134,7 +135,7 @@ def time_mesh(phys_params):
         t.extend(np.linspace(segm[i], segm[i+1], int(N_pts)))
 
     # split into batches
-    num_batches = max(1, len(t)//phys_params["batch_size"]-1)
+    num_batches = max(1, ceil(len(t)/phys_params["batch_size"]))
     t_batches  = np.array_split(t[:-1],     num_batches)
     dt_batches = np.array_split(np.diff(t), num_batches)
 
