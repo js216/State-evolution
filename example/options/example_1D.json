@@ -12,7 +12,7 @@
   "scan_range": {
     "start"       : 0,
     "stop"        : 2500,
-    "num"         : 3
+    "num"         : 6
   },
   "fixed_params": {
     "ACw"         : 10e6,
@@ -35,5 +35,5 @@
   },
   "state_idx"     : 35,
   "s"             : -1,
-  "chunk_size"    : 2
+  "chunk_size"    : 1
 }

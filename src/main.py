@@ -31,7 +31,7 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
                 pickled_vars[key] = pickle.load(f)
 
     exit_probs = []
-    for i,val1,val2 in tqdm(val_range):
+    for i,val1,val2 in val_range:
         # check there is a parameter value
         if np.isnan(val1) or np.isnan(val2):
            exit_probs.append(np.nan)
@@ -77,6 +77,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        pad_width   = ((0, (cs-len(scan_space)%cs)%cs),(0, 0))
        scan_space  = np.pad(scan_space, pad_width, 'constant', constant_values=np.nan)
        scan_chunks = np.split(scan_space, scan_space.shape[0]//cs)
+       N = scan_space.shape[0]//cs
 
        # send first batches to workers
        for r in range(1,COMM.size):
@@ -87,22 +88,27 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        data = np.empty((scan_params["chunk_size"], 4))
 
        # distribute the rest of the work
-       while sum(active_workers) > 1:
-          for r in range(1,COMM.size):
-             if COMM.iprobe(source=r):
-                # receive results and write to file
-                with open(results_fname, "a") as f:
+       with tqdm(total=N) as pbar, open(results_fname, "a") as f:
+          while sum(active_workers) > 1:
+             # for progress monitoring
+             if pbar.n != N-len(scan_chunks):
+                pbar.update(N-len(scan_chunks)-pbar.n)
+
+             # check each worker
+             for r in range(1,COMM.size):
+                if COMM.iprobe(source=r):
+                   # receive results and write to file
                    COMM.Recv(data, source=r)
                    active_workers[r] = 0
                    np.savetxt(f, data)
 
-                # send more work, or tell the worker to quit
-                if len(scan_chunks) > 0:
-                   COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
-                   active_workers[r] = 1
-                else:
-                   COMM.send(0, dest=r, tag=1)
-          time.sleep(1)
+                   # send more work, or tell the worker to quit
+                   if len(scan_chunks) > 0:
+                      COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
+                      active_workers[r] = 1
+                   else:
+                      COMM.send(0, dest=r, tag=1)
+             time.sleep(1)
 
     # for worker ranks
     else:
