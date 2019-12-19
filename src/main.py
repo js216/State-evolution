@@ -85,6 +85,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        if len(scan_space) == 0:
           for r in range(1,COMM.size):
              COMM.send(0, dest=r, tag=1)
+          print("No work remains to be done.")
           return
 
        # split job into specified number of equal-size chunks
@@ -95,11 +96,19 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        N = scan_space.shape[0]//cs
 
        # send first batches to workers
+       num_ranks = COMM.size
        for r in range(1,COMM.size):
-          COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
+          try:
+             COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
+          except IndexError:
+             num_ranks = r - 1
+
+       # ask unneeded workers to quit
+       for i in range(r,COMM.size):
+          COMM.send(0, dest=r, tag=1)
 
        # for keeping track of workers
-       active_workers = np.ones(COMM.size)
+       active_workers = np.ones(num_ranks)
        data = np.empty((scan_params["chunk_size"], 4))
 
        # distribute the rest of the work
@@ -110,7 +119,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
                 pbar.update(N-len(scan_chunks)-pbar.n)
 
              # check each worker
-             for r in range(1,COMM.size):
+             for r in range(1,num_ranks):
                 if COMM.iprobe(source=r):
                    # receive results and write to file
                    COMM.Recv(data, source=r)
