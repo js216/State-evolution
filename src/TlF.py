@@ -57,10 +57,10 @@ class BasisState:
     # scalar product (a * psi)
     def __rmul__(self, a):
         return self * a
-    
+
     def print_quantum_numbers(self):
         print( self.J,"%+d"%self.mJ,"%+0.1f"%self.m1,"%+0.1f"%self.m2 )
-        
+
 class State:
     # constructor
     def __init__(self, data=[], remove_zero_amp_cpts=True):
@@ -104,7 +104,7 @@ class State:
                 if cpt2 == cpt1:
                     data.append((amp1+amp2,cpt1))
         return State(data)
-                
+
     # superposition: subtraction
     def __sub__(self, other):
         return self + -1*other
@@ -116,15 +116,15 @@ class State:
     # scalar product (a * psi)
     def __rmul__(self, a):
         return self * a
-    
+
     # scalar division (psi / a)
     def __truediv__(self, a):
         return self * (1/a)
-    
+
     # negation
     def __neg__(self):
         return -1.0 * self
-    
+
     # inner product
     def __matmul__(self, other):
         result = 0
@@ -136,17 +136,17 @@ class State:
     # iterator methods
     def __iter__(self):
         return self
-    
+
     def __next__(self):
         if self.index == 0:
             raise StopIteration
         self.index -= 1
         return self.data[self.index]
-    
+
     # direct access to a component
     def __getitem__(self, i):
         return self.data[i]
-    
+
 def J2(psi):
     return State([(psi.J*(psi.J+1),psi)])
 
@@ -250,13 +250,13 @@ def HZy(psi):
         return -mu_J/psi.J*Jy(psi) - mu_Tl/psi.I1*I1y(psi) - mu_F/psi.I2*I2y(psi)
     else:
         return -mu_Tl/psi.I1*I1y(psi) - mu_F/psi.I2*I2y(psi)
-    
+
 def HZz(psi):
     if psi.J != 0:
         return -mu_J/psi.J*Jz(psi) - mu_Tl/psi.I1*I1z(psi) - mu_F/psi.I2*I2z(psi)
     else:
         return -mu_Tl/psi.I1*I1z(psi) - mu_F/psi.I2*I2z(psi)
-    
+
 def R10(psi):
     amp1 = sqrt((psi.J-psi.mJ)*(psi.J+psi.mJ)/(8*psi.J**2-2))
     ket1 = BasisState(psi.J-1, psi.mJ, psi.I1, psi.m1, psi.I2, psi.m2)
@@ -310,7 +310,7 @@ def H_mat_elem(Jmax):
     HZx_m = HMatElems(HZx, QN(Jmax))
     HZy_m = HMatElems(HZy, QN(Jmax))
     HZz_m = HMatElems(HZz, QN(Jmax))
-    
+
     return Hff_m, HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m
 
 def H_eff(H_arr):
@@ -346,14 +346,14 @@ def fit_Heff(field_arr, H_orig):
 
     # do least-squares fit
     coeffs, _, _, _ = np.linalg.lstsq(A, B, rcond=None)
-    
+
     return coeffs.reshape(-1, 20, 20)
 
 def Heff_fit(field_arr, fp):
     # give fields sensible names
     Ex, Ey, Ez = field_arr[:,0], field_arr[:,1], field_arr[:,2]
     Bx, By, Bz = field_arr[:,3], field_arr[:,4], field_arr[:,5]
-    
+
     # use field parameters to obtain matrices
     constant  = fp[np.newaxis,0,:,:]
     linear    = np.einsum("ai,ijk", np.array(field_arr),                      fp[1:7,:,:])
@@ -365,12 +365,17 @@ def Heff_fit(field_arr, fp):
     cross_E2b = np.einsum("ia,ijk", np.array([Ex*Ey**2, Ex*Ez**2, Ey*Ez**2]), fp[28:31,:,:])
     cross_B2a = np.einsum("ia,ijk", np.array([Bx**2*By, Bx**2*Bz, By**2*Bz]), fp[31:34,:,:])
     cross_B2b = np.einsum("ia,ijk", np.array([Bx*By**2, Bx*Ez**2, By*Bz**2]), fp[34:37,:,:])
-    
+
     return constant + linear + quadratic + cross_E + cross_B \
                     + cubic + cross_E2a + cross_E2b + cross_B2a + cross_B2b
 
 def generate_Hamiltonian(Jmax, fname):
     np.save(fname, H_mat_elem(Jmax))
+
+def load_H_mat(fname):
+    Hff_m, HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m = np.load(fname)
+    H_m = np.stack([Hff_m, HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m], axis=2)
+    return H_m
 
 def load_Hamiltonian(fname):
     Hff_m, HSx_m, HSy_m, HSz_m, HZx_m, HZy_m, HZz_m = np.load(fname)

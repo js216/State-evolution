@@ -2,8 +2,10 @@ import time
 import pickle
 import os, sys
 import datetime
+import cupy as cp
 import numpy as np
 import json, hashlib
+from math import ceil
 from tqdm import tqdm
 from mpi4py import MPI
 from textwrap import wrap
@@ -11,7 +13,7 @@ from functools import reduce
 import matplotlib.pyplot as plt
 
 import TlF
-from util import expm_arr, eval_num
+from util import expm_arr, eval_num, PropOp
 
 # default MPI communicator
 COMM = MPI.COMM_WORLD
@@ -20,8 +22,10 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
         time_params, s=None, pickle_fnames=None, scan_param2="none",
         batch_size=16384, **kwargs):
 
-    # import Hamiltonian
+    # import Hamiltonian into the GPU
     H_fn = TlF.load_Hamiltonian(H_fname)
+    cp.cuda.Device(COMM.rank).use()
+    prop_op = PropOp(TlF.load_H_mat(H_fname), time_params["batch_size"])
 
     # import pickled variables (if any)
     pickled_vars = {}
@@ -38,18 +42,17 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
             **fixed_params, **time_params, **pickled_vars, **kwargs}
 
         # calculate time-evolution operator
-        U = np.eye(H_fn([[0,0,0,0,0,0]]).shape[-1])
         t_batches, dt_batches = time_mesh(phys_params)
+        prop_op.init_dU()
         for t, dt in zip(t_batches, dt_batches):
-            H = H_fn(field(field_str, phys_params, t))
-            dU = expm_arr(-1j * 2*np.pi * dt[:,np.newaxis,np.newaxis] * H, s)
-            U =  reduce(np.matmul, dU[::-1])@ U
+            field = np.transpose([eval_num(x,{**phys_params,'t':t}) for x in field_str])
+            prop_op.evolve(field, dt, s)
+        U = prop_op.get()
 
         # evaluate transition probability
         psi_i = eig_state(H_fn, field_str, phys_params, t_batches[0][0],   state_idx)
         psi_f = eig_state(H_fn, field_str, phys_params, t_batches[-1][-1], state_idx)
         exit_probs.append(1 - np.abs(psi_f.conj() @ U @ psi_i)**2)
-
     return exit_probs
 
 
@@ -134,7 +137,7 @@ def time_mesh(phys_params):
         t.extend(np.linspace(segm[i], segm[i+1], int(N_pts)))
 
     # split into batches
-    num_batches = max(1, len(t)//phys_params["batch_size"]-1)
+    num_batches = max(1, ceil(len(t)/phys_params["batch_size"]))
     t_batches  = np.array_split(t[:-1],     num_batches)
     dt_batches = np.array_split(np.diff(t), num_batches)
 

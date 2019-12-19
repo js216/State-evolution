@@ -1,0 +1,38 @@
+{
+  "H_fname"       : "matrices/H3.npy",
+  "field_str": [
+     "0*t",
+     "0*t",
+     "DCi - DCslope*t + ACi * np.heaviside( DCi/DCslope+deltaT - t, 1) * np.cos(ACw*t)",
+     "0*t",
+     "0*t",
+     "0*t + 0.5"
+  ],
+  "scan_param"    : "ACi",
+  "scan_range": {
+    "start"       : 0,
+    "stop"        : 2500,
+    "num"         : 250
+  },
+  "fixed_params": {
+    "ACw"         : 10e6,
+    "DCi"         : 500,
+    "DCslope"     : 2.75e8,
+    "deltaT"      : 2e-6
+  },
+  "units": {
+    "ACi"         : "V/cm",
+    "ACw"         : "Hz",
+    "DCi"         : "V/cm",
+    "DCslope"     : "V/cm/s",
+    "deltaT"      : "s"
+  },
+  "time_params": {
+    "num_segm"    : "int(3*DCi/DCslope*ACw/(2*np.pi)/2)",
+    "t_final"     : "2 * DCi / DCslope",
+    "segm_pts"    : "0.034 * (DCslope*(T1-T0) + ACi*ACw*DCi/DCslope/np.pi)",
+    "batch_size"  : 2000
+  },
+  "state_idx"     : 35,
+  "s"             : 36
+}
