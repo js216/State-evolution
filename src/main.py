@@ -124,7 +124,6 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
                       active_workers[r] = 1
                    else:
                       COMM.send(0, dest=r, tag=1)
-             time.sleep(1)
 
     # for worker ranks
     else:
@@ -171,7 +170,7 @@ def time_mesh(phys_params):
         t.extend(np.linspace(segm[i], segm[i+1], int(N_pts)))
 
     # split into batches
-    num_batches = max(1, ceil(len(t)/phys_params["batch_size"]))
+    num_batches = max(1, ceil(len(t)/phys_params["batch_size"])-1)
     t_batches  = np.array_split(t[:-1],     num_batches)
     dt_batches = np.array_split(np.diff(t), num_batches)
 
