@@ -72,6 +72,20 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        scan_space = np.dstack(np.meshgrid(range1, range2, indexing='ij')).reshape(-1, 2)
        scan_space = np.hstack((np.arange(scan_space.shape[0])[:,np.newaxis], scan_space))
 
+       # check how much work has been done already (if any)
+       try:
+          to_do = np.full(scan_space.shape[0], True)
+          to_do[np.loadtxt(results_fname)[:,0].astype(int)] = False
+          scan_space = scan_space[to_do, :]
+       except (OSError, IndexError):
+          pass
+
+       # if all finished, tell workers to quit and return
+       if len(scan_space) == 0:
+          for r in range(1,COMM.size):
+             COMM.send(0, dest=r, tag=1)
+          return
+
        # split job into specified number of equal-size chunks
        cs = scan_params["chunk_size"]
        pad_width   = ((0, (cs-len(scan_space)%cs)%cs),(0, 0))
@@ -88,7 +102,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        data = np.empty((scan_params["chunk_size"], 4))
 
        # distribute the rest of the work
-       with tqdm(total=N) as pbar, open(results_fname, "a") as f:
+       with tqdm(total=N) as pbar:
           while sum(active_workers) > 1:
              # for progress monitoring
              if pbar.n != N-len(scan_chunks):
@@ -100,7 +114,8 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
                    # receive results and write to file
                    COMM.Recv(data, source=r)
                    active_workers[r] = 0
-                   np.savetxt(f, data)
+                   with open(results_fname, "a") as f:
+                      np.savetxt(f, data)
 
                    # send more work, or tell the worker to quit
                    if len(scan_chunks) > 0:
@@ -172,20 +187,6 @@ def eig_state(H_fn, field_str, phys_params, t, state_idx):
     return np.linalg.eigh(H_fn(field(field_str,phys_params,np.array([t])))[0])[1][:,state_idx]
 
 
-def import_options(run_dir, options_fname):
-   # load options file
-   with open(run_dir+"/options/"+options_fname) as options_file:
-      option_dict = json.load(options_file)
-
-   # check file hasn't been processed yet
-   results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
-   results_fname = run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt"
-   done = os.path.isfile(results_fname)
-
-   # return
-   return done, results_fname, option_dict
-
-
 def plot(run_dir, options_fname, vmin=None, vmax=None):
     """Plot calculation results.
 
@@ -213,10 +214,10 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     with open(run_dir+"/options/"+options_fname) as options_file:
         option_dict = json.load(options_file)
 
-    # load results
+    # load and sort results
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
-    with open(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt") as f:
-        results = json.load(f)
+    results = np.loadtxt(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt")
+    results = results[:,-1][results[:,0].argsort()]
 
     # draw the plots
     if "scan_range2" in option_dict:
@@ -257,13 +258,18 @@ if __name__ == '__main__':
     # import run options
     run_dir       = sys.argv[1]
     options_fname = sys.argv[2]
-    done, results_fname, option_dict = import_options(run_dir, options_fname)
 
-    # process if necessary
-    #if not done:
-    #    process(results_fname, **option_dict)
+    # load options file
+    with open(run_dir+"/options/"+options_fname) as options_file:
+       option_dict = json.load(options_file)
+
+    # check file hasn't been processed yet
+    results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
+    results_fname = run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt"
+
+    # calculate values
     process(results_fname, **option_dict)
 
     # plot results
-    #if COMM.rank == 0:
-    #    plot(run_dir, options_fname)
+    if COMM.rank == 0:
+        plot(run_dir, options_fname)
