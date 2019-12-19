@@ -31,7 +31,7 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
                 pickled_vars[key] = pickle.load(f)
 
     exit_probs = []
-    for i,val1,val2 in (val_range):
+    for i,val1,val2 in tqdm(val_range):
         # check there is a parameter value
         if np.isnan(val1) or np.isnan(val2):
            exit_probs.append(np.nan)
@@ -80,21 +80,26 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
 
        # send first batches to workers
        for r in range(1,COMM.size):
-          COMM.Isend(scan_chunks.pop(), dest=r)
+          COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
+
+       # for keeping track of workers
+       active_workers = np.ones(COMM.size)
+       data = np.empty((scan_params["chunk_size"], 4))
 
        # distribute the rest of the work
-       data = np.empty((scan_params["chunk_size"], 4))
-       while len(scan_chunks) > 0:
+       while sum(active_workers) > 1:
           for r in range(1,COMM.size):
              if COMM.iprobe(source=r):
                 # receive results and write to file
                 with open(results_fname, "a") as f:
                    COMM.Recv(data, source=r)
+                   active_workers[r] = 0
                    np.savetxt(f, data)
 
                 # send more work, or tell the worker to quit
                 if len(scan_chunks) > 0:
-                   COMM.Isend(scan_chunks.pop(), dest=r)
+                   COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
+                   active_workers[r] = 1
                 else:
                    COMM.send(0, dest=r, tag=1)
           time.sleep(1)
@@ -104,11 +109,13 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        data = np.empty((scan_params["chunk_size"], 3))
        while True:
           # get work and return results
-          COMM.Recv(data, source=0)
-          COMM.Send(run_scan(data, **option_dict), dest=0)
+          if COMM.iprobe(source=0, tag=0):
+             COMM.Recv(data, source=0, tag=0)
+             COMM.Send(run_scan(data, **option_dict), dest=0)
 
           # quit when there's no more work to be done
           if COMM.iprobe(source=0, tag=1):
+             COMM.recv(source=0, tag=1)
              break
 
 def time_mesh(phys_params):
