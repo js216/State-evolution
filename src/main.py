@@ -68,7 +68,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
     """
     if COMM.rank == 0:
        # flatten and enumerate a 2D scan (if applicable)
-       range1 = np.linspace(**scan_range, dtype=np.float64)
+       range1 = np.linspace(**scan_range)
        range2 = np.linspace(**scan_range2) if scan_range2 else [0]
        scan_space = np.dstack(np.meshgrid(range1, range2, indexing='ij')).reshape(-1, 2)
        scan_space = np.hstack((np.arange(scan_space.shape[0])[:,np.newaxis], scan_space))
