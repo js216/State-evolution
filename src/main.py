@@ -2,6 +2,7 @@ import time
 import pickle
 import logging
 import os, sys
+import argparse
 import datetime
 import numpy as np
 import json, hashlib
@@ -94,6 +95,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
        try:
           to_do = np.full(scan_space.shape[0], True)
           to_do[np.loadtxt(results_fname)[:,0].astype(int)] = False
+          logging.info(f"Already done {scan_space.shape[0]-np.sum(to_do)} out of {scan_space.shape[0]} points.")
           scan_space = scan_space[to_do, :]
        except (OSError, IndexError):
           pass
@@ -286,21 +288,30 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
 
 
 if __name__ == '__main__':
-    # import run options
-    run_dir       = sys.argv[1]
-    options_fname = sys.argv[2]
+    # define command-line arguments
+    parser = argparse.ArgumentParser(description='A script for studying Hamiltonian state evolution.')
+    verbosity = parser.add_mutually_exclusive_group()
+    verbosity.add_argument("--debug",       help="set logging level DEBUG", action="store_true")
+    verbosity.add_argument("--info",        help="set logging level INFO",  action="store_true")
+    parser.add_argument("run_dir",       help="run_dir for given scan")
+    parser.add_argument("options_fname", help="filename for the options file")
+
+    # parse command-line arguments and set logging level
+    args = parser.parse_args()
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    elif args.info:
+        logging.basicConfig(level=logging.INFO)
 
     # load options file
-    with open(run_dir+"/options/"+options_fname) as options_file:
+    with open(args.run_dir+"/options/"+args.options_fname) as options_file:
        option_dict = json.load(options_file)
 
-    # check file hasn't been processed yet
-    results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
-    results_fname = run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt"
-
-    # calculate values
+    # calculate the file
+    results_md5 = hashlib.md5(open(args.run_dir+"/options/"+args.options_fname,'rb').read()).hexdigest()
+    results_fname = args.run_dir+"/results/"+args.options_fname[:-5]+"-"+results_md5+".txt"
     process(results_fname, **option_dict)
 
     # plot results
     if COMM.rank == 0:
-        plot(run_dir, options_fname)
+        plot(args.run_dir, args.options_fname)
