@@ -32,7 +32,7 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
             with open(fname, 'rb') as f:
                 pickled_vars[key] = pickle.load(f)
 
-    exit_probs = []
+    exit_probs, num_timesteps = [], []
     for i,val1,val2 in val_range:
         # check there is a parameter value
         if np.isnan(val1) or np.isnan(val2):
@@ -46,7 +46,8 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
 
         # calculate time-evolution operator
         U = np.eye(H_fn([[0,0,0,0,0,0]]).shape[-1])
-        t_batches, dt_batches = time_mesh(phys_params)
+        len_t, t_batches, dt_batches = time_mesh(phys_params)
+        num_timesteps.append(len_t)
         for t, dt in zip(t_batches, dt_batches):
             H = H_fn(field(field_str, phys_params, t))
             dU = expm_arr(-1j * 2*np.pi * dt[:,np.newaxis,np.newaxis] * H, s)
@@ -57,7 +58,11 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
         psi_f = eig_state(H_fn, field_str, phys_params, t_batches[-1][-1], state_idx)
         exit_probs.append(1 - np.abs(psi_f.conj() @ U @ psi_i)**2)
 
-    return np.hstack((val_range,np.array(exit_probs)[:,np.newaxis]))
+    return np.hstack((
+          val_range,
+          np.array(num_timesteps)[:,np.newaxis],
+          np.array(exit_probs)   [:,np.newaxis],
+       ))
 
 
 def process(results_fname, scan_range, scan_range2=None, **scan_params):
@@ -112,7 +117,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
 
        # for keeping track of workers
        active_workers = np.ones(num_ranks)
-       data = np.empty((scan_params["chunk_size"], 4))
+       data = np.empty((scan_params["chunk_size"], 5))
 
        # distribute the rest of the work
        with tqdm(total=N, smoothing=0) as pbar:
@@ -186,7 +191,7 @@ def time_mesh(phys_params):
     t_batches  = np.array_split(t[:-1],     num_batches)
     dt_batches = np.array_split(np.diff(t), num_batches)
 
-    return t_batches, dt_batches
+    return len(t), t_batches, dt_batches
 
 
 def field(field_str, phys_params, t_arr):
@@ -228,8 +233,9 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
 
     # load and sort results
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
-    results = np.loadtxt(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt")
-    results = results[:,-1][results[:,0].argsort()]
+    data = np.loadtxt(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt")
+    results = data[:,-1][data[:,0].argsort()]
+    num_timesteps = data[:,-2][data[:,0].argsort()]
 
     # draw the plots
     if "scan_range2" in option_dict:
@@ -249,6 +255,8 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     if option_dict.get("comment"):
         longtitle += str(option_dict.get("comment"))
     plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16}, pad=25)
+    plt.text(1.01, .05, " @ " + '%.2e' % np.sum(num_timesteps) + " steps",
+          transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
     plt.text(1.00, 1.01, options_fname[:-5]+"-"+results_md5,
           transform=plt.gca().transAxes, fontdict={'fontsize':8}, ha="right")
     units = option_dict["units"]
