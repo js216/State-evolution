@@ -1,11 +1,11 @@
 {
-  "H_fname"       : "matrices/H3.npy",
+  "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H3.npy",
   "field_str": [
      "0*t",
      "0*t",
      "0*t",
      "testvar(t)",
-     "0*t",
+     "test2var(t)",
      "0*t + 0.5"
   ],
   "scan_param"    : "ACi",
@@ -21,7 +21,10 @@
     "deltaT"      : 1
   },
   "pickle_fnames": {
-     "testvar"    : "example/options/test.pkl"
+     "testvar"    : "/home/fas/demille/jk2534/project/State-evolution/example/options/test.pkl"
+  },
+  "python_fnames": {
+     "test2var"   : "/home/fas/demille/jk2534/project/State-evolution/example/options/test2var.py"
   },
   "units": {
     "ACi"         : "V/cm",
@@ -34,8 +37,8 @@
     "num_segm"    : "int(3*DCi/DCslope*ACw/(2*np.pi)/2)",
     "t_final"     : "2 * DCi / DCslope",
     "segm_pts"    : "0.01 * (DCslope*(T1-T0) + ACi*ACw*DCi/DCslope/np.pi)",
-    "batch_size"  : 10
+    "batch_size"  : 1
   },
   "state_idx"     : 35,
-  "s"             : 15
+  "chunk_size"    : 1
 }

@@ -11,7 +11,7 @@
 
 prog=/home/fas/demille/jk2534/project/State-evolution/src/main.py
 run_dir=/home/fas/demille/jk2534/project/State-evolution/example
-options_file=example_1D.json
+options_file=pickle_test.json
 mpi_params="--mca mpi_warn_on_fork 0"
 
 #module load miniconda
@@ -20,4 +20,4 @@ module load Python/3.6.4-foss-2018a
 
 #mpirun -n 1 python3 -m cProfile -s tottime $prog $run_dir $options_file
 #python3 $prog $run_dir $options_file
-mpirun -n 4 $mpi_params python3 $prog $run_dir $options_file
+mpirun -n 3 $mpi_params python3 $prog $run_dir $options_file

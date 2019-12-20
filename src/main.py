@@ -7,6 +7,7 @@ import numpy as np
 import json, hashlib
 from math import ceil
 from tqdm import tqdm
+import importlib.util
 from mpi4py import MPI
 from textwrap import wrap
 from functools import reduce
@@ -19,8 +20,8 @@ from util import expm_arr, eval_num
 COMM = MPI.COMM_WORLD
 
 def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
-        time_params, s=None, pickle_fnames=None, scan_param2="none",
-        batch_size=16384, **kwargs):
+      time_params, s=None, pickle_fnames=None, python_fnames=None,
+      scan_param2="none", batch_size=16384, **kwargs):
 
     # import Hamiltonian
     H_fn = TlF.load_Hamiltonian(H_fname)
@@ -32,6 +33,16 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
             with open(fname, 'rb') as f:
                 pickled_vars[key] = pickle.load(f)
 
+    # import Python-code variables (if any)
+    python_vars = {}
+    if python_fnames:
+        for key, fname in python_fnames.items():
+           spec = importlib.util.spec_from_file_location("module.name", fname)
+           module = importlib.util.module_from_spec(spec)
+           spec.loader.exec_module(module)
+           python_vars[key] = getattr(module, key)
+
+    # run main scan loop
     exit_probs, num_timesteps = [], []
     for i,val1,val2 in val_range:
         # check there is a parameter value
@@ -41,8 +52,8 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
 
         # import parameters
         phys_params = {
-            **{scan_param: val1, scan_param2: val2},
-            **fixed_params, **time_params, **pickled_vars, **kwargs}
+              **{scan_param: val1, scan_param2: val2}, **fixed_params,
+              **time_params, **pickled_vars, **python_vars, **kwargs}
 
         # calculate time-evolution operator
         U = np.eye(H_fn([[0,0,0,0,0,0]]).shape[-1])
