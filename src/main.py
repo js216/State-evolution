@@ -247,8 +247,9 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     # load and sort results
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
     data = np.loadtxt(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt")
-    results = data[:,-1][data[:,0].argsort()]
-    num_timesteps = data[:,-2][data[:,0].argsort()]
+    _, indices = np.unique(data[:,0].astype(int), return_index=True)
+    results = data[:,-1][indices]
+    num_timesteps = data[:,-2][indices]
 
     # draw the plots
     if "scan_range2" in option_dict:
