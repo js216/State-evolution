@@ -34,5 +34,6 @@
     "batch_size"  : 2000
   },
   "state_idx"     : 35,
+  "chunk_size"    : 5,
   "s"             : 36
 }

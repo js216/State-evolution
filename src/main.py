@@ -1,6 +1,8 @@
 import time
 import pickle
+import socket
 import os, sys
+import logging
 import datetime
 import cupy as cp
 import numpy as np
@@ -10,6 +12,7 @@ from tqdm import tqdm
 from mpi4py import MPI
 from textwrap import wrap
 from functools import reduce
+from collections import Counter
 import matplotlib.pyplot as plt
 
 import TlF
@@ -24,7 +27,6 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
 
     # import Hamiltonian into the GPU
     H_fn = TlF.load_Hamiltonian(H_fname)
-    cp.cuda.Device(COMM.rank).use()
     prop_op = PropOp(TlF.load_H_mat(H_fname), time_params["batch_size"])
 
     # import pickled variables (if any)
@@ -35,7 +37,12 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
                 pickled_vars[key] = pickle.load(f)
 
     exit_probs = []
-    for val1,val2 in tqdm(val_range):
+    for i,val1,val2 in val_range:
+        # check there is a parameter value
+        if np.isnan(val1) or np.isnan(val2):
+           exit_probs.append(np.nan)
+           continue
+
         # import parameters
         phys_params = {
             **{scan_param: val1, scan_param2: val2},
@@ -53,71 +60,126 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
         psi_i = eig_state(H_fn, field_str, phys_params, t_batches[0][0],   state_idx)
         psi_f = eig_state(H_fn, field_str, phys_params, t_batches[-1][-1], state_idx)
         exit_probs.append(1 - np.abs(psi_f.conj() @ U @ psi_i)**2)
-    return exit_probs
+    return np.hstack((val_range,np.array(exit_probs)[:,np.newaxis]))
 
+def setup_gpus():
+    if COMM.rank == 0:
+        # recieve hostnames from all ranks distribute cuda device IDs
+        hostnames = {}
+        for r in range(1,COMM.size):
+            hostname = COMM.recv(source=r)
+            hostnames[r] = hostname
+        count_hosts = Counter(hostnames.values())
+        for r in range(1,COMM.size):
+            count_hosts[hostnames[r]] -= 1
+            COMM.send(count_hosts[hostnames[r]], dest = r)
 
-def process(result_fname, scan_range, scan_range2=None, **scan_params):
+    else:
+        # send hostname and recieve cuda device to employ
+        COMM.send(socket.gethostname(), dest=0)
+        device = COMM.recv(source=0)
+        cp.cuda.Device(device).use()
+
+def process(results_fname, scan_range, scan_range2=None, **scan_params):
     """Distribute work and collect results.
-
     Arguments:
-    result_fname:     text file for storing calculation results
+    results_fname:    text file for storing calculation results
     scan_range, etc.: parameters describing the scan (from options file)
     """
     if COMM.rank == 0:
-        # flatten a 2D scan (if applicable)
-        range1 = np.linspace(**scan_range)
+        # flatten and enumerate a 2D scan (if applicable)
+        range1 = np.linspace(**scan_range, dtype=np.float64)
         range2 = np.linspace(**scan_range2) if scan_range2 else [0]
         scan_space = np.dstack(np.meshgrid(range1, range2, indexing='ij')).reshape(-1, 2)
+        scan_space = np.hstack((np.arange(scan_space.shape[0])[:,np.newaxis], scan_space))
 
-        # shuffle the scan space (to distribute workload more uniformly)
-        permutation = np.random.permutation(scan_space.shape[0])
-        scan_space = scan_space[permutation]
+        # check how much work has been done already (if any)
+        try:
+            to_do = np.full(scan_space.shape[0], True)
+            to_do[np.loadtxt(results_fname)[:,0].astype(int)] = False
+            scan_space = scan_space[to_do, :]
+        except (OSError, IndexError):
+            pass
 
-        # for runtime analysis
-        start_time = time.time()
-        num_timesteps = estimate_runtime(scan_space, **option_dict)
-        if num_timesteps == 0:
-           raise Exception("Time mesh error: zero timesteps.")
-        print("Total number of timesteps: ", num_timesteps)
+        # if all finished, tell workers to quit and return
+        if len(scan_space) == 0:
+            for r in range(1,COMM.size):
+                COMM.send(0, dest=r, tag=1)
+            logging.info("No work remains to be done.")
+            return
 
-        # split job into specified number of chunks
-        scan_chunks = np.array_split(scan_space, COMM.size)
+        # split job into specified number of equal-size chunks
+        cs = scan_params["chunk_size"]
+        pad_width   = ((0, (cs-len(scan_space)%cs)%cs),(0, 0))
+        scan_space  = np.pad(scan_space, pad_width, 'constant', constant_values=np.nan)
+        scan_chunks = np.split(scan_space, scan_space.shape[0]//cs)
+        N = scan_space.shape[0]//cs
+
+        # send first batches to workers
+        num_ranks = COMM.size
+        for r in range(1,COMM.size):
+            try:
+                COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
+            except IndexError:
+                logging.debug(f"Info: {r-1} batches is not enough work for {COMM.size} ranks.")
+                num_ranks = r
+                break
+
+        # ask unneeded workers to quit
+        for r in range(num_ranks, COMM.size):
+            COMM.send(0, dest=r, tag=1)
+
+        # for keeping track of workers
+        active_workers = np.ones(num_ranks)
+        data = np.empty((scan_params["chunk_size"], 4))
+
+        # distribute the rest of the work
+        with tqdm(total=N, smoothing=0) as pbar:
+            while sum(active_workers) > 1:
+            # check each worker
+                for r in range(1,num_ranks):
+                    if COMM.iprobe(source=r):
+                        # update progress bar
+                        pbar.update(1)
+
+                        # receive results and write to file
+                        COMM.Recv(data, source=r)
+                        active_workers[r] = 0
+                        with open(results_fname, "a") as f:
+                            np.savetxt(f, data)
+
+                        # send more work, or tell the worker to quit
+                        if len(scan_chunks) > 0:
+                            COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
+                            active_workers[r] = 1
+                        else:
+                            COMM.send(0, dest=r, tag=1)
+
+    # for worker ranks
     else:
-        scan_chunks = None
+        data = np.empty((scan_params["chunk_size"], 3))
+        while True:
+            # get work and return results
+            if COMM.iprobe(source=0, tag=0):
+                COMM.Recv(data, source=0, tag=0)
+                COMM.Send(run_scan(data, **option_dict), dest=0)
 
-    # scatter jobs across cores
-    in_chunk   = COMM.scatter(scan_chunks, root=0)
-    out_chunk  = run_scan(in_chunk, **scan_params)
-    exit_probs = MPI.COMM_WORLD.gather(out_chunk, root=0)
-
-    # collect the results together
-    if COMM.rank == 0:
-        # unshuffle
-        shuffled_results = np.array(sum(exit_probs,[])) #flatten
-        unshuffled_results = np.zeros(shuffled_results.shape)
-        unshuffled_results[permutation] = shuffled_results
-
-        # write to file
-        with open(result_fname, "w") as f:
-            json.dump([
-                num_timesteps,
-                time.time()-start_time,
-                list(unshuffled_results)
-            ], f)
+            # quit when there's no more work to be done
+            if COMM.iprobe(source=0, tag=1):
+                COMM.recv(source=0, tag=1)
+                logging.debug(f"Info: Rank {COMM.rank} exiting.")
+                break
 
 
 def time_mesh(phys_params):
     """Generate a time mesh given mesh parameters.
-
     Arguments:
     phys_params: dict with mesh-defining parameters
-
     The following elements are required in the dict:
     t_final:    final time of state evolution (str -> float)
     num_segm:   number of mesh segments (str -> int)
     segm_pts:   timesteps/time in interval [T0,T1] (str -> int)
     batch_size: maximum number of steps per batch
-
     Returns:
     t_batches:  time grid, batched
     dt_batches: time differences, batched
@@ -137,7 +199,7 @@ def time_mesh(phys_params):
         t.extend(np.linspace(segm[i], segm[i+1], int(N_pts)))
 
     # split into batches
-    num_batches = max(1, ceil(len(t)/phys_params["batch_size"]))
+    num_batches = max(1, ceil(len(t)/phys_params["batch_size"])-1)
     t_batches  = np.array_split(t[:-1],     num_batches)
     dt_batches = np.array_split(np.diff(t), num_batches)
 
@@ -153,29 +215,8 @@ def eig_state(H_fn, field_str, phys_params, t, state_idx):
     """Return eigenstate at a given time."""
     return np.linalg.eigh(H_fn(field(field_str,phys_params,np.array([t])))[0])[1][:,state_idx]
 
-
-def estimate_runtime(val_range, fixed_params, time_params, scan_param,
-        pickle_fnames=None, scan_param2="none", **kwargs):
-    # import pickled variables (if any)
-    pickled_vars = {}
-    if pickle_fnames:
-        for key, fname in pickle_fnames.items():
-            with open(fname, 'rb') as f:
-                pickled_vars[key] = pickle.load(f)
-
-    # calculate the size of the entire time mesh for the entire scan
-    num_timesteps = 0
-    for val1,val2 in val_range:
-        phys_params = {
-            **{scan_param: val1, scan_param2: val2},
-            **fixed_params, **time_params, **pickled_vars, **kwargs}
-        num_timesteps += len(np.ravel(time_mesh(phys_params)[0]))
-    return num_timesteps
-
-
 def plot(run_dir, options_fname, vmin=None, vmax=None):
     """Plot calculation results.
-
     Arguments:
     run_dir:       directory containing information about a scan
     options_fname: filename within run_dir/options
@@ -200,10 +241,10 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     with open(run_dir+"/options/"+options_fname) as options_file:
         option_dict = json.load(options_file)
 
-    # load results
+    # load and sort results
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
-    with open(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt") as f:
-        num_timesteps, eval_time, results = json.load(f)
+    results = np.loadtxt(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt")
+    results = results[:,-1][results[:,0].argsort()]
 
     # draw the plots
     if "scan_range2" in option_dict:
@@ -223,9 +264,6 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     if option_dict.get("comment"):
         longtitle += str(option_dict.get("comment"))
     plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16}, pad=25)
-    final_time = "eval time = "+str(datetime.timedelta(seconds=round(eval_time)))
-    final_time += " @ " + '%.2e' % num_timesteps + " steps"
-    plt.text(1.01, .05, final_time, transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
     plt.text(1.00, 1.01, options_fname[:-5]+"-"+results_md5,
           transform=plt.gca().transAxes, fontdict={'fontsize':8}, ha="right")
     units = option_dict["units"]
@@ -244,24 +282,21 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
 
 
 if __name__ == '__main__':
-    # decode script arguments
+    # import run options
+    setup_gpus()
     run_dir       = sys.argv[1]
     options_fname = sys.argv[2]
 
-    # import run options
+    # load options file
     with open(run_dir+"/options/"+options_fname) as options_file:
-        option_dict = json.load(options_file)
+       option_dict = json.load(options_file)
 
     # check file hasn't been processed yet
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
     results_fname = run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt"
-    done = os.path.isfile(results_fname)
 
-    # process the run
-    if not done:
-        process(results_fname, **option_dict)
-    else:
-        print("File already processed: " + options_fname)
+    # calculate values
+    process(results_fname, **option_dict)
 
     # plot results
     if COMM.rank == 0:
