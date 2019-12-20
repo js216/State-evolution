@@ -120,7 +120,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
           try:
              COMM.Isend(scan_chunks.pop(), dest=r, tag=0)
           except IndexError:
-             logging.debug(f"Info: {r-1} batches is not enough work for {COMM.size} ranks.")
+             logging.debug(f"{r-1} batches is not enough work for {COMM.size} ranks.")
              num_ranks = r
              break
 
@@ -166,7 +166,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
           # quit when there's no more work to be done
           if COMM.iprobe(source=0, tag=1):
              COMM.recv(source=0, tag=1)
-             logging.debug(f"Info: Rank {COMM.rank} exiting.")
+             logging.debug(f"Rank {COMM.rank} exiting.")
              break
 
 def time_mesh(phys_params):
@@ -315,3 +315,4 @@ if __name__ == '__main__':
     # plot results
     if COMM.rank == 0:
         plot(args.run_dir, args.options_fname)
+        logging.info("All done.")
