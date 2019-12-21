@@ -85,6 +85,8 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
     scan_range, etc.: parameters describing the scan (from options file)
     """
     if COMM.rank == 0:
+       logging.info(f"Processing {results_fname}")
+
        # flatten and enumerate a 2D scan (if applicable)
        range1 = np.linspace(**scan_range, dtype=np.float64)
        range2 = np.linspace(**scan_range2) if scan_range2 else [0]
