@@ -249,9 +249,14 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     # load and sort results
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
     data = np.loadtxt(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt")
-    _, indices = np.unique(data[:,0].astype(int), return_index=True)
-    results = data[:,-1][indices]
-    num_timesteps = data[:,-2][indices]
+    idx_orig, idx_file = np.unique(data[:,0].astype(int), return_index=True)
+    num_timesteps = data[:,-2][idx_file]
+
+    # display missing results as np.nan
+    num1 = option_dict["scan_range"]["num"]
+    num2 = option_dict["scan_range2"]["num"] if "scan_range2" in option_dict else 1
+    results = np.full(num1*num2, np.nan)
+    results[idx_orig] = data[:,-1][idx_file]
 
     # draw the plots
     if "scan_range2" in option_dict:
@@ -319,10 +324,11 @@ if __name__ == '__main__':
     # define command-line arguments
     parser = argparse.ArgumentParser(description='A script for studying Hamiltonian state evolution.')
     verbosity = parser.add_mutually_exclusive_group()
-    verbosity.add_argument("--debug",    help="set logging level DEBUG", action="store_true")
-    verbosity.add_argument("--info",     help="set logging level INFO",  action="store_true")
-    parser.add_argument("--batchfile",   help="generate a batch file", action="store_true")
-    parser.add_argument("--submit",      help="submit job to cluster", action="store_true")
+    verbosity.add_argument("--debug",    help="set logging level DEBUG",          action="store_true")
+    verbosity.add_argument("--info",     help="set logging level INFO",           action="store_true")
+    parser.add_argument("--batchfile",   help="generate a batch file",            action="store_true")
+    parser.add_argument("--submit",      help="submit job to cluster",            action="store_true")
+    parser.add_argument("--plot",        help="plot, even if results incomplete", action="store_true")
     parser.add_argument("run_dir",       help="run_dir for given scan")
     parser.add_argument("options_fname", help="filename for the options file")
     args = parser.parse_args()
@@ -345,6 +351,10 @@ if __name__ == '__main__':
     elif args.submit:
         batch_fname = generate_batchfile(args.run_dir, args.options_fname, option_dict)
         os.system(f"sbatch {batch_fname}")
+
+    # force plot results
+    elif args.plot:
+        plot(args.run_dir, args.options_fname)
 
     else:
         # process the data
