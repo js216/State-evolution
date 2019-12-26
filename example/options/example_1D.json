@@ -10,8 +10,6 @@
      "mail-type"       : "all",
      "mail-user"       : "jakob.kastelic@yale.edu",
      "prog"            : "/home/fas/demille/jk2534/project/State-evolution/src/main.py",
-     "run_dir"         : "/home/fas/demille/jk2534/project/State-evolution/example",
-     "batch_fname"     : "/home/fas/demille/jk2534/project/State-evolution/example/slurm/job.sh",
      "MPI_ranks"       : "4"
   },
   "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H3.npy",

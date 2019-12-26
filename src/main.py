@@ -9,10 +9,10 @@ import json, hashlib
 from math import ceil
 from tqdm import tqdm
 import importlib.util
-from mpi4py import MPI
 from textwrap import wrap
 from functools import reduce
 import matplotlib.pyplot as plt
+from mpi4py import MPI
 
 import TlF
 from util import expm_arr, eval_num
@@ -290,11 +290,11 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     plt.close()
 
 
-def generate_batchfile(options_fname, cluster_params, **kwargs):
-    with open(cluster_params["batch_fname"], 'w') as f:
+def generate_batchfile(run_dir, options_fname, option_dict, **kwargs):
+    batch_fname = run_dir+"/slurm/"+options_fname[:-5]+".sh"
+    with open(batch_fname, 'w') as f:
+        cluster_params = option_dict["cluster_params"]
         print("#!/bin/bash", file=f)
-
-        # parameters for the slurm task scheduler
         print("#SBATCH --partition "       + cluster_params["partition"],       file=f)
         print("#SBATCH --job-name "        + cluster_params["job-name"],        file=f)
         print("#SBATCH --nodes "           + cluster_params["nodes"],           file=f)
@@ -304,13 +304,15 @@ def generate_batchfile(options_fname, cluster_params, **kwargs):
         print("#SBATCH --time "            + cluster_params["time"],            file=f)
         print("#SBATCH --mail-type "       + cluster_params["mail-type"],       file=f)
         print("#SBATCH --mail-user "       + cluster_params["mail-user"],       file=f)
-
-        # executables
+        print("#SBATCH --output "          + run_dir+"/slurm-%j.out",           file=f)
+        print("#SBATCH --error "           + run_dir+"/slurm-%j.out",           file=f)
         print("module load Python/3.6.4-foss-2018a", file=f)
         exec_str = "mpirun -n " + cluster_params["MPI_ranks"] \
                 + " --mca mpi_warn_on_fork 0 python3 " + cluster_params["prog"] \
-                + " --info " + cluster_params["run_dir"] + " " + options_fname
+                + " --info " + run_dir + " " + options_fname
         print(exec_str, file=f)
+    print(f"Generated batch file: {batch_fname}")
+    return batch_fname
 
 
 if __name__ == '__main__':
@@ -337,18 +339,20 @@ if __name__ == '__main__':
 
     # generate batch file
     if args.batchfile:
-        generate_batchfile(args.options_fname, option_dict)
+        generate_batchfile(args.run_dir, args.options_fname, option_dict)
 
     # submit to cluster
     elif args.submit:
-        generate_batchfile(args.options_fname, option_dict)
-        submit_to_cluster()
+        batch_fname = generate_batchfile(args.run_dir, args.options_fname, option_dict)
+        os.system(f"sbatch {batch_fname}")
 
-    # run and plot the scans
     else:
+        # process the data
         results_md5 = hashlib.md5(open(args.run_dir+"/options/"+args.options_fname,'rb').read()).hexdigest()
         results_fname = args.run_dir+"/results/"+args.options_fname[:-5]+"-"+results_md5+".txt"
         process(results_fname, **option_dict)
+
+        # plot results
         if COMM.rank == 0:
             plot(args.run_dir, args.options_fname)
             logging.info("All done.")
