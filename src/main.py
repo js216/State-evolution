@@ -220,15 +220,73 @@ def eig_state(H_fn, field_str, phys_params, t, state_idx):
     return np.linalg.eigh(H_fn(field(field_str,phys_params,np.array([t])))[0])[1][:,state_idx]
 
 
-def plot(run_dir, options_fname, vmin=None, vmax=None, state_idx_2D=0):
+def plot_1D(results, num_timesteps, results_md5, run_dir, options_fname, option_dict): 
+   for i,s_idx in enumerate(option_dict["state_idx"]):
+     plt.plot(np.linspace(**option_dict["scan_range"]), results[:,i], lw=2, label=str(s_idx))
+   plt.legend()
+
+   # plot labels
+   longtitle = option_dict["H_fname"].split("/")[-1] + ", "
+   longtitle += ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
+          for (key, value) in option_dict["fixed_params"].items()])
+   if option_dict.get("comment"):
+      longtitle += str(option_dict.get("comment"))
+   plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16}, pad=25)
+   plt.text(1.01, .05, " @ " + '%.2e' % np.sum(num_timesteps) + " steps",
+        transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
+   plt.text(1.00, 1.01, options_fname[:-5]+"-"+results_md5,
+        transform=plt.gca().transAxes, fontdict={'fontsize':8}, ha="right")
+   units = option_dict["units"]
+   plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
+   plt.ylabel("$P_\mathrm{exit}$")
+
+   # save plot to file
+   plt.grid()
+   plt.tight_layout()
+   plt.savefig(run_dir+"/plots/"+options_fname[:-5]+"-"+results_md5+".png")
+   plt.close()
+
+
+def plot_2D(results, num_timesteps, results_md5, run_dir, options_fname, option_dict):
+   for i,s_idx in enumerate(option_dict["state_idx"]):
+     range1 = np.linspace(**option_dict["scan_range"])
+     range2 = np.linspace(**option_dict["scan_range2"])
+     X, Y = np.meshgrid(range2, range1)
+     Z    = np.reshape(results[:,i], X.shape, order='C')
+     plt.pcolormesh(Y, X, Z, cmap="nipy_spectral")
+     plt.colorbar()
+
+     # plot labels
+     longtitle = option_dict["H_fname"].split("/")[-1] + ", "
+     longtitle += ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
+             for (key, value) in option_dict["fixed_params"].items()])
+     if option_dict.get("comment"):
+         longtitle += str(option_dict.get("comment"))
+     plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16}, pad=25)
+     plt.text(1.01, .05, " @ " + '%.2e' % np.sum(num_timesteps) + " steps",
+           transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
+     plt.text(1.00, 1.01, options_fname[:-5]+"-"+results_md5,
+           transform=plt.gca().transAxes, fontdict={'fontsize':8}, ha="right")
+     units = option_dict["units"]
+     plt.text(1.2, 1.05, "$P_\mathrm{exit}("+str(s_idx)+")$",
+             transform=plt.gca().transAxes, fontdict={'fontsize':13}, ha="right")
+     plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
+     plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
+
+     # save plot to file
+     plt.grid()
+     plt.tight_layout()
+     plt.savefig(run_dir+"/plots/"+options_fname[:-5]+"-state_"+str(s_idx)+"-"+results_md5+".png")
+     plt.close()
+
+
+def plot(run_dir, options_fname):
     """Plot calculation results.
 
     Arguments:
     run_dir:       directory containing information about a scan
     options_fname: filename within run_dir/options
     title:         optional extra text for plot title
-    vmin:          optional vmin for 2D plots
-    vmax:          optional vmax for 2D plots
     """
     # define plot format
     SMALL_SIZE = 16
@@ -261,43 +319,9 @@ def plot(run_dir, options_fname, vmin=None, vmax=None, state_idx_2D=0):
 
     # draw the plots
     if "scan_range2" in option_dict:
-        range1 = np.linspace(**option_dict["scan_range"])
-        range2 = np.linspace(**option_dict["scan_range2"])
-        X, Y = np.meshgrid(range2, range1)
-        Z    = np.reshape(results[:,state_idx_2D], X.shape, order='C')
-        plt.pcolormesh(Y, X, Z, cmap="nipy_spectral", vmin=vmin, vmax=vmax)
-        plt.colorbar()
+       plot_2D(results, num_timesteps, results_md5, run_dir, options_fname, option_dict)
     else:
-       for i,s_idx in enumerate(option_dict["state_idx"]):
-          plt.plot(np.linspace(**option_dict["scan_range"]), results[:,i], lw=2, label=str(s_idx))
-       plt.legend()
-
-    # plot labels
-    longtitle = option_dict["H_fname"].split("/")[-1] + ", "
-    longtitle += ',  '.join(['%s\xa0=\xa0%.2g' % (key, value) \
-            for (key, value) in option_dict["fixed_params"].items()])
-    if option_dict.get("comment"):
-        longtitle += str(option_dict.get("comment"))
-    plt.title("\n".join(wrap(longtitle, 45)), fontdict={'fontsize':16}, pad=25)
-    plt.text(1.01, .05, " @ " + '%.2e' % np.sum(num_timesteps) + " steps",
-          transform=plt.gca().transAxes, rotation='vertical', fontdict={'fontsize':10})
-    plt.text(1.00, 1.01, options_fname[:-5]+"-"+results_md5,
-          transform=plt.gca().transAxes, fontdict={'fontsize':8}, ha="right")
-    units = option_dict["units"]
-    if "scan_range2" in option_dict:
-       plt.text(1.2, 1.05, "$P_\mathrm{exit}("+str(option_dict['state_idx'][state_idx_2D])+")$",
-               transform=plt.gca().transAxes, fontdict={'fontsize':13}, ha="right")
-       plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
-       plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
-    else:
-       plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
-       plt.ylabel("$P_\mathrm{exit}$")
-
-    # save plot to file
-    plt.grid()
-    plt.tight_layout()
-    plt.savefig(run_dir+"/plots/"+options_fname[:-5]+"-"+results_md5+".png")
-    plt.close()
+       plot_1D(results, num_timesteps, results_md5, run_dir, options_fname, option_dict)
 
 
 def generate_batchfile(run_dir, options_fname, option_dict, **kwargs):
@@ -335,7 +359,6 @@ if __name__ == '__main__':
     parser.add_argument("--batchfile",   help="generate a batch file",            action="store_true")
     parser.add_argument("--submit",      help="submit job to cluster",            action="store_true")
     parser.add_argument("--plot",        help="plot, even if results incomplete", action="store_true")
-    parser.add_argument("--state",       help="which state to plot in a 2D plot (default=0)", type=int, default=0)
     parser.add_argument("run_dir",       help="run_dir for given scan")
     parser.add_argument("options_fname", help="filename for the options file")
     args = parser.parse_args()
@@ -365,7 +388,7 @@ if __name__ == '__main__':
 
     # force plot results
     elif args.plot:
-        plot(args.run_dir, args.options_fname, state_idx_2D=args.state)
+        plot(args.run_dir, args.options_fname)
 
     else:
         # process the data
@@ -375,5 +398,5 @@ if __name__ == '__main__':
 
         # plot results
         if COMM.rank == 0:
-            plot(args.run_dir, args.options_fname, state_idx_2D=args.state)
+            plot(args.run_dir, args.options_fname)
             logging.info("All done.")
