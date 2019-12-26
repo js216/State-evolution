@@ -41,11 +41,8 @@ place in the `run_dir`, and the plots into `plots`.
 
 ### Basic usage
 
-1. Create a folder ("`run_dir`") with the subdirectories `options`, `plots`, and
-   `results`. Optionally, create a `slurm` folder for job-submission scripts
-   when running the program on a cluster. An example script is provided, but see
-   [here](https://docs.ycrc.yale.edu/clusters-at-yale/job-scheduling/) for
-   details about job scheduling @ Yale.
+1. Create a folder ("`run_dir`") with the subdirectories `options`, `plots`,
+   'slurm, and `results`.
 
 2. In the `options` subdirectory, place a file with the extension `.json`,
    defining the scan parameters. Consult the provided example files and the next
@@ -63,6 +60,11 @@ place in the `run_dir`, and the plots into `plots`.
 
 The so-called options file has to be formatted as a JSON file, and be a dict
 containing the following keys:
+
+- `cluster_params` is a dict with parameters to be passed to the slurm
+  scheduling system if the `--submit` option is used. See the provided example
+  files, and see [here](https://docs.ycrc.yale.edu/clusters-at-yale/job-scheduling/)
+  for details about job scheduling @ Yale.
 
 - `H_fname`, giving the filename of matrix elements of the chosen Hamiltonian
   in the `numpy` format. Four such files are already provided in the
@@ -100,9 +102,23 @@ containing the following keys:
 - `s` determines the level of approximation to be used for calculating matrix
   exponentials
 
+- `chunk_size` determines how many scan points are sent to each MPI worker rank
+  at once
+
+### Command-line arguments
+
+Calling the script with `-h` or `--help` flag will print out the list of
+optional and mandatory arguments. Some of these are:
+
+- `--plot` forces plotting any results calculated so far without doing any of
+  the calculation (even if the results are incomplete)
+
+- `--submit` generates a batch file and submits it to the cluster
+
+- verbosity can be increased with the `--info` and `--debug` flags
 
 ### Time mesh details
-
+    
 The time mesh is defined by the four parameters inside the `time_params` dict:
 
 - `t_final`: time evolution takes place between `t=0` and `t=t_final`
@@ -126,16 +142,3 @@ Whereas `scipy.linalg.expm` estimates `s` automatically, `expm_arr` does not.
 Since all matrices are to be exponentiated in parallel, they all have to be
 divided, scaled, and squared the same number of times, and that is given by the
 `s` parameter.
-
-### Parallel evaluation
-
-The most time-consuming part of the calculation, matrix exponentiation, is
-already parallelized by
-[scipy.linalg.expm](https://docs.scipy.org/doc/scipy-0.15.1/reference/generated/scipy.linalg.expm.html)
-in a multi-threaded way. Nonetheless, each scan with a decent number of steps
-will take hours on a modern machine. Thus, I recommend defining multiple option
-files within a single `run_dir`, and running each scan on a separated node in a
-cluster. Moreover, the main script uses all available MPI ranks, so calling it
-with `mpirun -n ⟨n⟩` will speed up the scan `n` times. Refer to the [YCRC
-instructions](https://docs.ycrc.yale.edu/clusters-at-yale/) to learn how to
-access the cluster at Yale.

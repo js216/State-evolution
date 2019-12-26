@@ -300,19 +300,20 @@ def generate_batchfile(run_dir, options_fname, option_dict, **kwargs):
     with open(batch_fname, 'w') as f:
         cluster_params = option_dict["cluster_params"]
         print("#!/bin/bash", file=f)
-        print("#SBATCH --partition "       + cluster_params["partition"],       file=f)
-        print("#SBATCH --job-name "        + cluster_params["job-name"],        file=f)
-        print("#SBATCH --nodes "           + cluster_params["nodes"],           file=f)
-        print("#SBATCH --ntasks-per-node " + cluster_params["ntasks-per-node"], file=f)
-        print("#SBATCH --cpus-per-task "   + cluster_params["cpus-per-task"],   file=f)
-        print("#SBATCH --mem-per-cpu "     + cluster_params["mem-per-cpu"],     file=f)
-        print("#SBATCH --time "            + cluster_params["time"],            file=f)
-        print("#SBATCH --mail-type "       + cluster_params["mail-type"],       file=f)
-        print("#SBATCH --mail-user "       + cluster_params["mail-user"],       file=f)
-        print("#SBATCH --output "          + run_dir+"/slurm-%j.out",           file=f)
-        print("#SBATCH --error "           + run_dir+"/slurm-%j.out",           file=f)
+        if cluster_params["requeue"]:
+           print("#SBATCH --requeue", file=f)
+        print("#SBATCH --partition "       + cluster_params["partition"],        file=f)
+        print("#SBATCH --job-name "        + cluster_params["job-name"],         file=f)
+        print("#SBATCH --ntasks "          + cluster_params["ntasks"],           file=f)
+        print("#SBATCH --cpus-per-task "   + cluster_params["cpus-per-task"],    file=f)
+        print("#SBATCH --mem-per-cpu "     + cluster_params["mem-per-cpu"],      file=f)
+        print("#SBATCH --time "            + cluster_params["time"],             file=f)
+        print("#SBATCH --mail-type "       + cluster_params["mail-type"],        file=f)
+        print("#SBATCH --mail-user "       + cluster_params["mail-user"],        file=f)
+        print("#SBATCH --output \""        + run_dir+"/slurm/slurm-%j.out"+"\"", file=f)
+        print("#SBATCH --error \""         + run_dir+"/slurm/slurm-%j.out"+"\"", file=f)
         print("module load Python/3.6.4-foss-2018a", file=f)
-        exec_str = "mpirun -n " + cluster_params["MPI_ranks"] \
+        exec_str = "mpirun -n " + cluster_params["ntasks"] \
                 + " --mca mpi_warn_on_fork 0 python3 " + cluster_params["prog"] \
                 + " --info " + run_dir + " " + options_fname
         print(exec_str, file=f)

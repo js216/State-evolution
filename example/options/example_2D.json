@@ -1,5 +1,17 @@
 {
-  "H_fname"       : "matrices/H3.npy",
+  "cluster_params" : {
+     "job-name"        : "example_2D",
+     "requeue"         : false,
+     "partition"       : "day",
+     "ntasks"          : "5",
+     "cpus-per-task"   : "1",
+     "mem-per-cpu"     : "300M",
+     "time"            : "00:30:00",
+     "mail-type"       : "all",
+     "mail-user"       : "jakob.kastelic@yale.edu",
+     "prog"            : "/home/fas/demille/jk2534/project/State-evolution/src/main.py"
+  },
+  "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H3.npy",
   "field_str": [
      "0*t",
      "0*t",
@@ -8,16 +20,16 @@
      "0*t",
      "0*t + 0.5"
   ],
-  "scan_param"    : "ACw",
+  "scan_param"    : "ACi",
   "scan_range": {
-    "start"       : 5e6,
-    "stop"        : 25e6,
-    "num"         : 3
-  },
-  "scan_param2"   : "ACi",
-  "scan_range2": {
     "start"       : 0,
-    "stop"        : 500,
+    "stop"        : 2500,
+    "num"         : 5
+  },
+  "scan_param2"   : "ACw",
+  "scan_range2": {
+    "start"       : 5e6,
+    "stop"        : 10e6,
     "num"         : 5
   },
   "fixed_params": {
@@ -35,9 +47,10 @@
   "time_params": {
     "num_segm"    : "int(3*DCi/DCslope*ACw/(2*np.pi)/2)",
     "t_final"     : "2 * DCi / DCslope",
-    "segm_pts"    : "0.215 * (DCslope + ACw*np.heaviside(DCi/DCslope+deltaT - T0,1))",
-    "batch_size"  : 3
+    "segm_pts"    : "0.01 * (DCslope*(T1-T0) + ACi*ACw*DCi/DCslope/np.pi)",
+    "batch_size"  : 1
   },
   "state_idx"     : 35,
-  "s"             : 15
+  "s"             : -1,
+  "chunk_size"    : 1
 }

@@ -1,4 +1,16 @@
 {
+  "cluster_params" : {
+     "job-name"        : "pickle_test",
+     "requeue"         : false,
+     "partition"       : "day",
+     "ntasks"          : "5",
+     "cpus-per-task"   : "1",
+     "mem-per-cpu"     : "300M",
+     "time"            : "00:30:00",
+     "mail-type"       : "all",
+     "mail-user"       : "jakob.kastelic@yale.edu",
+     "prog"            : "/home/fas/demille/jk2534/project/State-evolution/src/main.py"
+  },
   "H_fname"       : "/home/fas/demille/jk2534/project/State-evolution/matrices/H3.npy",
   "field_str": [
      "0*t",
