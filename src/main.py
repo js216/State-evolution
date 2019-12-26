@@ -282,6 +282,8 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
           transform=plt.gca().transAxes, fontdict={'fontsize':8}, ha="right")
     units = option_dict["units"]
     if "scan_range2" in option_dict:
+       plt.text(1.2, 1.05, "$P_\mathrm{exit}("+str(option_dict['state_idx'])+")$",
+               transform=plt.gca().transAxes, fontdict={'fontsize':13}, ha="right")
        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
        plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
     else:
