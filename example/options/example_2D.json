@@ -50,7 +50,7 @@
     "segm_pts"    : "0.01 * (DCslope*(T1-T0) + ACi*ACw*DCi/DCslope/np.pi)",
     "batch_size"  : 1
   },
-  "state_idx"     : 35,
+  "state_idx"     : [32,33,34,35],
   "s"             : -1,
   "chunk_size"    : 1
 }

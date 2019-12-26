@@ -68,12 +68,13 @@ def run_scan(val_range, H_fname, state_idx, scan_param, field_str, fixed_params,
         # evaluate transition probability
         psi_i = eig_state(H_fn, field_str, phys_params, t_batches[0][0],   state_idx)
         psi_f = eig_state(H_fn, field_str, phys_params, t_batches[-1][-1], state_idx)
-        exit_probs.append(1 - np.abs(psi_f.conj() @ U @ psi_i)**2)
+        proj = np.einsum("ix,ijx,jx->x", psi_i.conj(), U[:,:,np.newaxis], psi_f)
+        exit_probs.append(1 - np.abs(proj)**2)
 
     return np.hstack((
           val_range,
           np.array(num_timesteps)[:,np.newaxis],
-          np.array(exit_probs)   [:,np.newaxis],
+          np.array(exit_probs),
        ))
 
 
@@ -132,7 +133,7 @@ def process(results_fname, scan_range, scan_range2=None, **scan_params):
 
        # for keeping track of workers
        active_workers = np.ones(num_ranks)
-       data = np.empty((scan_params["chunk_size"], 5))
+       data = np.empty((scan_params["chunk_size"], 4+len(scan_params["state_idx"])))
 
        # distribute the rest of the work
        with tqdm(total=N, smoothing=0) as pbar:
@@ -219,7 +220,7 @@ def eig_state(H_fn, field_str, phys_params, t, state_idx):
     return np.linalg.eigh(H_fn(field(field_str,phys_params,np.array([t])))[0])[1][:,state_idx]
 
 
-def plot(run_dir, options_fname, vmin=None, vmax=None):
+def plot(run_dir, options_fname, vmin=None, vmax=None, state_idx_2D=0):
     """Plot calculation results.
 
     Arguments:
@@ -255,19 +256,21 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     # display missing results as np.nan
     num1 = option_dict["scan_range"]["num"]
     num2 = option_dict["scan_range2"]["num"] if "scan_range2" in option_dict else 1
-    results = np.full(num1*num2, np.nan)
-    results[idx_orig] = data[:,-1][idx_file]
+    results = np.full((num1*num2,len(option_dict["state_idx"])), np.nan)
+    results[idx_orig] = data[:,-len(option_dict["state_idx"]):][idx_file]
 
     # draw the plots
     if "scan_range2" in option_dict:
         range1 = np.linspace(**option_dict["scan_range"])
         range2 = np.linspace(**option_dict["scan_range2"])
         X, Y = np.meshgrid(range2, range1)
-        Z    = np.reshape(results, X.shape, order='C')
+        Z    = np.reshape(results[:,state_idx_2D], X.shape, order='C')
         plt.pcolormesh(Y, X, Z, cmap="nipy_spectral", vmin=vmin, vmax=vmax)
         plt.colorbar()
     else:
-       plt.plot(np.linspace(**option_dict["scan_range"]), results, lw=2, color="black")
+       for i,s_idx in enumerate(option_dict["state_idx"]):
+          plt.plot(np.linspace(**option_dict["scan_range"]), results[:,i], lw=2, label=str(s_idx))
+       plt.legend()
 
     # plot labels
     longtitle = option_dict["H_fname"].split("/")[-1] + ", "
@@ -282,13 +285,13 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
           transform=plt.gca().transAxes, fontdict={'fontsize':8}, ha="right")
     units = option_dict["units"]
     if "scan_range2" in option_dict:
-       plt.text(1.2, 1.05, "$P_\mathrm{exit}("+str(option_dict['state_idx'])+")$",
+       plt.text(1.2, 1.05, "$P_\mathrm{exit}("+str(option_dict['state_idx'][state_idx_2D])+")$",
                transform=plt.gca().transAxes, fontdict={'fontsize':13}, ha="right")
        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
        plt.ylabel(option_dict["scan_param2"]+" ["+units[option_dict["scan_param2"]]+"]")
     else:
        plt.xlabel(option_dict["scan_param"]+" ["+units[option_dict["scan_param"]]+"]")
-       plt.ylabel("$P_\mathrm{exit}$ from state "+str(option_dict["state_idx"]))
+       plt.ylabel("$P_\mathrm{exit}$")
 
     # save plot to file
     plt.grid()
@@ -332,6 +335,7 @@ if __name__ == '__main__':
     parser.add_argument("--batchfile",   help="generate a batch file",            action="store_true")
     parser.add_argument("--submit",      help="submit job to cluster",            action="store_true")
     parser.add_argument("--plot",        help="plot, even if results incomplete", action="store_true")
+    parser.add_argument("--state",       help="which state to plot in a 2D plot (default=0)", type=int, default=0)
     parser.add_argument("run_dir",       help="run_dir for given scan")
     parser.add_argument("options_fname", help="filename for the options file")
     args = parser.parse_args()
@@ -346,6 +350,10 @@ if __name__ == '__main__':
     with open(args.run_dir+"/options/"+args.options_fname) as options_file:
        option_dict = json.load(options_file)
 
+    # check for old versions of options file
+    if type(option_dict["state_idx"]) != list:
+       raise TypeError("Note: state_idx should be a list of state indices")
+
     # generate batch file
     if args.batchfile:
         generate_batchfile(args.run_dir, args.options_fname, option_dict)
@@ -357,7 +365,7 @@ if __name__ == '__main__':
 
     # force plot results
     elif args.plot:
-        plot(args.run_dir, args.options_fname)
+        plot(args.run_dir, args.options_fname, state_idx_2D=args.state)
 
     else:
         # process the data
@@ -367,5 +375,5 @@ if __name__ == '__main__':
 
         # plot results
         if COMM.rank == 0:
-            plot(args.run_dir, args.options_fname)
+            plot(args.run_dir, args.options_fname, state_idx_2D=args.state)
             logging.info("All done.")
