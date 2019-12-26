@@ -290,17 +290,42 @@ def plot(run_dir, options_fname, vmin=None, vmax=None):
     plt.close()
 
 
+def generate_batchfile(options_fname, cluster_params, **kwargs):
+    with open(cluster_params["batch_fname"], 'w') as f:
+        print("#!/bin/bash", file=f)
+
+        # parameters for the slurm task scheduler
+        print("#SBATCH --partition "       + cluster_params["partition"],       file=f)
+        print("#SBATCH --job-name "        + cluster_params["job-name"],        file=f)
+        print("#SBATCH --nodes "           + cluster_params["nodes"],           file=f)
+        print("#SBATCH --ntasks-per-node " + cluster_params["ntasks-per-node"], file=f)
+        print("#SBATCH --cpus-per-task "   + cluster_params["cpus-per-task"],   file=f)
+        print("#SBATCH --mem-per-cpu "     + cluster_params["mem-per-cpu"],     file=f)
+        print("#SBATCH --time "            + cluster_params["time"],            file=f)
+        print("#SBATCH --mail-type "       + cluster_params["mail-type"],       file=f)
+        print("#SBATCH --mail-user "       + cluster_params["mail-user"],       file=f)
+
+        # executables
+        print("module load Python/3.6.4-foss-2018a", file=f)
+        exec_str = "mpirun -n " + cluster_params["MPI_ranks"] \
+                + " --mca mpi_warn_on_fork 0 python3 " + cluster_params["prog"] \
+                + " --info " + cluster_params["run_dir"] + " " + options_fname
+        print(exec_str, file=f)
+
+
 if __name__ == '__main__':
     # define command-line arguments
     parser = argparse.ArgumentParser(description='A script for studying Hamiltonian state evolution.')
     verbosity = parser.add_mutually_exclusive_group()
-    verbosity.add_argument("--debug",       help="set logging level DEBUG", action="store_true")
-    verbosity.add_argument("--info",        help="set logging level INFO",  action="store_true")
+    verbosity.add_argument("--debug",    help="set logging level DEBUG", action="store_true")
+    verbosity.add_argument("--info",     help="set logging level INFO",  action="store_true")
+    parser.add_argument("--batchfile",   help="generate a batch file", action="store_true")
+    parser.add_argument("--submit",      help="submit job to cluster", action="store_true")
     parser.add_argument("run_dir",       help="run_dir for given scan")
     parser.add_argument("options_fname", help="filename for the options file")
-
-    # parse command-line arguments and set logging level
     args = parser.parse_args()
+
+    # set logging level
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
     elif args.info:
@@ -310,12 +335,20 @@ if __name__ == '__main__':
     with open(args.run_dir+"/options/"+args.options_fname) as options_file:
        option_dict = json.load(options_file)
 
-    # calculate the file
-    results_md5 = hashlib.md5(open(args.run_dir+"/options/"+args.options_fname,'rb').read()).hexdigest()
-    results_fname = args.run_dir+"/results/"+args.options_fname[:-5]+"-"+results_md5+".txt"
-    process(results_fname, **option_dict)
+    # generate batch file
+    if args.batchfile:
+        generate_batchfile(args.options_fname, option_dict)
 
-    # plot results
-    if COMM.rank == 0:
-        plot(args.run_dir, args.options_fname)
-        logging.info("All done.")
+    # submit to cluster
+    elif args.submit:
+        generate_batchfile(args.options_fname, option_dict)
+        submit_to_cluster()
+
+    # run and plot the scans
+    else:
+        results_md5 = hashlib.md5(open(args.run_dir+"/options/"+args.options_fname,'rb').read()).hexdigest()
+        results_fname = args.run_dir+"/results/"+args.options_fname[:-5]+"-"+results_md5+".txt"
+        process(results_fname, **option_dict)
+        if COMM.rank == 0:
+            plot(args.run_dir, args.options_fname)
+            logging.info("All done.")

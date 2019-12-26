@@ -20,4 +20,4 @@ module load Python/3.6.4-foss-2018a
 
 #mpirun -n 1 python3 -m cProfile -s tottime $prog $run_dir $options_file
 #python3 $prog $run_dir $options_file
-mpirun -n 4 $mpi_params python3 $prog $run_dir $options_file
+mpirun -n 4 $mpi_params python3 $prog --info $run_dir $options_file
