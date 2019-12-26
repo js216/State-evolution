@@ -251,7 +251,7 @@ def plot(run_dir, options_fname, vmin=None, vmax=None, state_idx_2D=0):
     results_md5 = hashlib.md5(open(run_dir+"/options/"+options_fname,'rb').read()).hexdigest()
     data = np.loadtxt(run_dir+"/results/"+options_fname[:-5]+"-"+results_md5+".txt")
     idx_orig, idx_file = np.unique(data[:,0].astype(int), return_index=True)
-    num_timesteps = data[:,-2][idx_file]
+    num_timesteps = data[:,3][idx_file]
 
     # display missing results as np.nan
     num1 = option_dict["scan_range"]["num"]
