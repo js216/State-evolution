@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --partition day
-#SBATCH --job-name example_1D
+#SBATCH --job-name example_2D
 #SBATCH --ntasks 5
 #SBATCH --cpus-per-task 1
 #SBATCH --mem-per-cpu 300M
