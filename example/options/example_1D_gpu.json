@@ -12,7 +12,7 @@
   "scan_range": {
     "start"       : 0,
     "stop"        : 2500,
-    "num"         : 250
+    "num"         : 25
   },
   "fixed_params": {
     "ACw"         : 10e6,
